@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Story Publisher",
+  "version": "0.1.0",
+  "description": "Publish Telegram stories from your browser.",
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_popup": "index.html"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": ["storage", "sidePanel", "alarms", "notifications"],
+  "host_permissions": ["https://*.telegram.org/*", "https://*.web.telegram.org/*"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' ws://*.web.telegram.org wss://*.web.telegram.org https://*.web.telegram.org; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; base-uri 'self'; frame-ancestors 'none'"
+  }
+}

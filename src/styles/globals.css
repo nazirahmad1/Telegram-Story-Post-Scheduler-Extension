@@ -1,0 +1,947 @@
+@import "./fonts.css";
+
+/*
+ * DESIGN TOKENS
+ * -------------
+ * Ink/Canvas: cool, quiet neutrals — deliberately not the warm-cream
+ * default. Signal (indigo) is the brand color; Pulse (coral) is reserved
+ * for the one "this is live / act now" cue (publish CTA, live status dot),
+ * never used decoratively.
+ */
+:root {
+  --ink: #14171f;
+  --ink-soft: #565b6b;
+  --canvas: #f6f7fb;
+  --surface: #ffffff;
+  --line: #e3e6f0;
+  --line-strong: #c7cce0;
+
+  --signal: #3652e0;
+  --signal-soft: #eaedfd;
+  --pulse: #ff5d73;
+  --pulse-soft: #ffe9ec;
+  --success: #1fae6b;
+  --success-soft: #e7f8ef;
+  --danger: #e14b4b;
+  --danger-soft: #fdeaea;
+
+  --font-display: "Sora", "Vazirmatn", "Noto Sans Arabic", Inter, system-ui, sans-serif;
+  --font-body: Inter, "Noto Sans", system-ui, sans-serif;
+  --font-rtl: "Vazirmatn", "Noto Sans Arabic", system-ui, sans-serif;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgb(20 23 31 / 0.06);
+  --shadow-md: 0 8px 24px -12px rgb(20 23 31 / 0.18);
+
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  color-scheme: light dark;
+}
+
+/*
+ * Dark palette — same semantic tokens, just re-pointed. Everything in this
+ * file is already written against var(--ink)/var(--surface)/etc., so no
+ * component styling below needs to know or care which mode is active.
+ */
+/*
+ * Applied via document.documentElement.dataset.theme (see
+ * src/theme/ThemeProvider.tsx) — NOT a plain prefers-color-scheme media
+ * query, because the whole point is that the person can override the OS
+ * setting with the toggle button. ThemeProvider still defaults this
+ * attribute to the OS preference until they make an explicit choice.
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #eef0f7;
+  --ink-soft: #a4a9bd;
+  --canvas: #0e1016;
+  --surface: #171a24;
+  --line: #262a38;
+  --line-strong: #383e52;
+
+  --signal: #8b9bff;
+  --signal-soft: #232a52;
+  --pulse: #ff8a9a;
+  --pulse-soft: #402029;
+  --success: #3ecf8e;
+  --success-soft: #163a2c;
+  --danger: #ff7a7a;
+  --danger-soft: #3d2020;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 8px 24px -12px rgb(0 0 0 / 0.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ease: linear;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  /* Chrome sizes an extension POPUP window partly from its own content —
+     a pure `width: 100%` (fine in a normal tab, where the viewport itself
+     already has a size) gives Chrome no concrete anchor to size the
+     popup window against, and it can render collapsed to near nothing.
+     An explicit min-width fixes that; it's a floor, not a fixed size, so
+     the side panel (already normally wider than this) is unaffected. */
+  min-width: 360px;
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* The ONLY place font-family switches on direction — components inherit. */
+html[dir="rtl"] body {
+  font-family: var(--font-rtl);
+}
+html[dir="rtl"] h1,
+html[dir="rtl"] h2,
+html[dir="rtl"] h3 {
+  font-family: "Vazirmatn", var(--font-display);
+}
+html[lang="ar"] body,
+html[lang="ar"] h1,
+html[lang="ar"] h2,
+html[lang="ar"] h3 {
+  font-family: "Noto Sans Arabic", "Vazirmatn", system-ui, sans-serif;
+}
+
+/* Accessible, visible keyboard focus everywhere — never suppressed. */
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- Layout primitives (logical properties throughout) ---------- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.spread {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 320px;
+  max-width: 440px;
+  height: 100%;
+  min-height: 480px;
+  margin-inline: auto;
+  background: var(--canvas);
+}
+
+@media (min-width: 720px) {
+  /* When opened as a resizable side panel (not the fixed-size popup), the
+     shell centers with breathing room instead of stretching edge to edge. */
+  .app-shell {
+    max-width: 480px;
+    border-inline: 1px solid var(--line);
+  }
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ---------- Cards ---------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-start-start-radius: var(--radius-lg);
+  border-start-end-radius: var(--radius-lg);
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* ---------- Buttons ---------- */
+
+.btn {
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-md);
+  padding-block: var(--space-3);
+  padding-inline: var(--space-4);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  transition: transform 120ms var(--ease), background-color 120ms var(--ease);
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background: var(--signal);
+  color: white;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #2c46c9;
+}
+
+.btn-cta {
+  background: var(--pulse);
+  color: white;
+}
+.btn-cta:hover:not(:disabled) {
+  background: #ef4a61;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--canvas);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  padding: var(--space-2);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* ---------- Form fields ---------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrap > svg {
+  position: absolute;
+  inset-inline-start: var(--space-3);
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+.input {
+  width: 100%;
+  padding-inline: var(--space-3);
+  padding-block: var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  text-align: start; /* NOT "left" — flips correctly per direction */
+  transition: border-color 120ms var(--ease), box-shadow 120ms var(--ease);
+}
+.input:focus-visible {
+  border-color: var(--signal);
+  box-shadow: 0 0 0 3px var(--signal-soft);
+}
+.input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+/* Room for a leading icon inside .input-wrap */
+.input-wrap .input {
+  padding-inline-start: calc(var(--space-3) * 2 + 16px);
+}
+
+.helper-text {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.error-text {
+  font-size: 12px;
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ---------- Chips (privacy selector, etc.) ---------- */
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.chip {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  border-radius: var(--radius-pill);
+  padding-inline: var(--space-3);
+  padding-block: var(--space-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: all 120ms var(--ease);
+}
+.chip[aria-pressed="true"] {
+  background: var(--signal-soft);
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+/* ---------- Story ring — the signature motif ----------
+ * A gradient ring (signal -> pulse) around circular elements, echoing the
+ * literal visual language of "Stories": the ring around a profile photo
+ * that means "there's a live story here." Used for the connection avatar
+ * in the top bar and the story upload dropzone — nowhere decorative.
+ */
+.story-ring {
+  --ring-size: 40px;
+  width: var(--ring-size);
+  height: var(--ring-size);
+  border-radius: 50%;
+  padding: 2.5px;
+  background: linear-gradient(135deg, var(--signal), var(--pulse));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.story-ring.is-muted {
+  background: var(--line-strong);
+}
+.story-ring-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--signal);
+}
+.story-ring.is-muted .story-ring-inner {
+  color: var(--ink-soft);
+}
+
+/* ---------- Dropzone ---------- */
+
+.dropzone {
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: border-color 120ms var(--ease), background-color 120ms var(--ease);
+}
+.dropzone:hover,
+.dropzone.is-active {
+  border-color: var(--signal);
+  background: var(--signal-soft);
+  color: var(--signal);
+}
+.dropzone.has-file {
+  border-style: solid;
+  border-color: var(--success);
+  background: var(--success-soft);
+  color: var(--ink);
+}
+
+/* ---------- Story preview (composer) ---------- */
+
+.story-preview {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  aspect-ratio: 9 / 16;
+  margin-inline: auto;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--canvas);
+}
+.story-preview img,
+.story-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.story-preview-caption {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  padding: var(--space-3) var(--space-2) var(--space-2);
+  background: linear-gradient(to top, rgb(0 0 0 / 0.65), transparent);
+}
+.story-preview-caption span {
+  color: white;
+  font-size: 12px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- Top bar ---------- */
+
+.top-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--space-4);
+  padding-block: var(--space-3);
+  background: var(--surface);
+  border-block-end: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  z-index: 1;
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Bottom tab bar ---------- */
+
+.tab-bar {
+  flex-shrink: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--surface);
+  border-block-start: 1px solid var(--line);
+}
+
+.tab-bar-item {
+  appearance: none;
+  border: none;
+  background: transparent;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding-block: var(--space-2);
+  padding-inline: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink-soft);
+  cursor: pointer;
+  position: relative;
+  text-align: center;
+}
+.tab-bar-item span {
+  width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tab-bar-item[aria-current="page"] {
+  color: var(--signal);
+}
+.tab-bar-item[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 30%;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--signal);
+}
+
+/* ---------- Status pill ---------- */
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 12px;
+  font-weight: 600;
+  padding-inline: var(--space-2);
+  padding-block: 4px;
+  border-radius: var(--radius-pill);
+}
+.status-pill.is-connected {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.status-pill.is-disconnected {
+  background: var(--canvas);
+  color: var(--ink-soft);
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot.is-live {
+    animation: pulse-dot 1.8s var(--ease) infinite;
+  }
+}
+@keyframes pulse-dot {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(31 174 107 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgb(31 174 107 / 0);
+  }
+}
+
+/* ---------- Empty state ---------- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  padding-block: var(--space-6);
+  color: var(--ink-soft);
+}
+.empty-state svg {
+  color: var(--line-strong);
+}
+
+/* ---------- Step dots (auth flow) ---------- */
+
+.step-dots {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.step-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.step-dot.is-active {
+  background: var(--signal);
+  width: 18px;
+  border-radius: var(--radius-pill);
+  transition: width 160ms var(--ease);
+}
+.step-dot.is-done {
+  background: var(--success);
+}
+
+/* ---------- Stat card ---------- */
+
+.stat-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+}
+.stat-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* ---------- History list ---------- */
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+}
+.history-item + .history-item {
+  border-block-start: 1px solid var(--line);
+}
+.history-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--signal-soft);
+  color: var(--signal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.history-thumb.is-clickable {
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+.history-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  color: var(--ink-soft);
+}
+
+/* ---------- Story viewer ---------- */
+
+.story-viewer {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--canvas) 92%, transparent);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+.story-viewer-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-2);
+}
+.story-viewer-media {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding-inline: var(--space-2);
+}
+.story-viewer-media img,
+.story-viewer-media video {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-md);
+  object-fit: contain;
+}
+.story-viewer-nav {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+.story-viewer-nav:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.story-viewer-nav.is-prev {
+  inset-inline-start: 0;
+}
+.story-viewer-nav.is-next {
+  inset-inline-end: 0;
+}
+.story-viewer-footer {
+  padding: var(--space-3) var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.story-viewer-progress {
+  display: flex;
+  gap: 4px;
+}
+.story-viewer-progress span {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--line-strong);
+}
+.story-viewer-progress span.is-current {
+  background: var(--signal);
+}
+
+/* ---------- Country picker (phone country/dial code) ---------- */
+
+.country-picker {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.country-picker-trigger {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+  padding-inline: var(--space-2);
+}
+
+.country-picker-menu {
+  position: absolute;
+  z-index: 10;
+  inset-block-start: calc(100% + var(--space-1));
+  inset-inline-start: 0;
+  width: 260px;
+  max-height: 220px;
+  padding: var(--space-2);
+  box-shadow: var(--shadow-md);
+}
+
+.country-picker-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  max-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.country-picker-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: none;
+  background: transparent;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: start;
+  font-size: 13px;
+}
+.country-picker-option:hover {
+  background: var(--canvas);
+}
+.country-picker-option[aria-selected="true"] {
+  background: var(--signal-soft);
+  color: var(--signal);
+  font-weight: 600;
+}
+
+.phone-row {
+  display: flex;
+  gap: var(--space-2);
+}
+.phone-row .input-wrap {
+  flex: 1;
+}
+
+/* ---------- Compact language switcher (top bar) ---------- */
+
+.lang-switch {
+  position: relative;
+}
+
+.lang-switch-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+.lang-switch-trigger:hover {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.lang-switch-menu {
+  position: absolute;
+  z-index: 10;
+  inset-block-start: calc(100% + var(--space-1));
+  inset-inline-end: 0;
+  width: 180px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: var(--space-1);
+  box-shadow: var(--shadow-md);
+}
+
+
+
+/* ---------- Toast ---------- */
+
+.toast {
+  position: fixed;
+  inset-block-end: var(--space-4);
+  inset-inline-end: var(--space-4);
+  inset-inline-start: var(--space-4);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-inline-start: 3px solid var(--ink-soft);
+  padding-inline: var(--space-4);
+  padding-block: var(--space-3);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+.toast.is-success {
+  border-inline-start-color: var(--success);
+}
+.toast.is-success svg {
+  color: var(--success);
+}
+.toast.is-error {
+  border-inline-start-color: var(--danger);
+}
+.toast.is-error svg {
+  color: var(--danger);
+}
+
+/* ---------- Upload progress ---------- */
+
+.upload-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.upload-progress-track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+  overflow: hidden;
+}
+.upload-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--signal);
+  transition: width 150ms var(--ease);
+}
+.upload-progress-fill.is-done {
+  background: var(--success);
+}
+.upload-progress-fill.is-error {
+  background: var(--danger);
+}
+.upload-progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-soft);
+}

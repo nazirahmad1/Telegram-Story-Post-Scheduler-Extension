@@ -1,0 +1,49 @@
+diff --git a/node_modules/telegram/Password.js b/node_modules/telegram/Password.js
+index 3ae12fc..b82972d 100644
+--- a/node_modules/telegram/Password.js
++++ b/node_modules/telegram/Password.js
+@@ -265,6 +265,6 @@ async function computeCheck(request, password) {
+     return new tl_1.Api.InputCheckPasswordSRP({
+         srpId: srpId,
+         A: Buffer.from(aForHash),
+-        M1: M1,
++        M1: Buffer.from(M1),
+     });
+ }
+diff --git a/node_modules/telegram/client/telegramBaseClient.js b/node_modules/telegram/client/telegramBaseClient.js
+index d9af669..999fe7b 100644
+--- a/node_modules/telegram/client/telegramBaseClient.js
++++ b/node_modules/telegram/client/telegramBaseClient.js
+@@ -43,7 +43,7 @@ const clientParamsDefault = {
+     langCode: "en",
+     systemLangCode: "en",
+     _securityChecks: true,
+-    useWSS: platform_1.isBrowser ? window.location.protocol == "https:" : false,
++    useWSS: false,
+     testServers: false,
+ };
+ class TelegramBaseClient {
+diff --git a/node_modules/telegram/extensions/PromisedWebSockets.js b/node_modules/telegram/extensions/PromisedWebSockets.js
+index d790661..83d8b62 100644
+--- a/node_modules/telegram/extensions/PromisedWebSockets.js
++++ b/node_modules/telegram/extensions/PromisedWebSockets.js
+@@ -84,7 +84,7 @@ class PromisedWebSockets {
+                 };
+                 //CONTEST
+                 if (platform_1.isBrowser) {
+-                    window.addEventListener("offline", async () => {
++                    self.addEventListener("offline", async () => {
+                         await this.close();
+                         if (this.resolveRead) {
+                             this.resolveRead(false);
+diff --git a/node_modules/telegram/platform.js b/node_modules/telegram/platform.js
+index 263480f..c399553 100644
+--- a/node_modules/telegram/platform.js
++++ b/node_modules/telegram/platform.js
+@@ -2,5 +2,5 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.isNode = exports.isBrowser = exports.isDeno = void 0;
+ exports.isDeno = "Deno" in globalThis;
+-exports.isBrowser = !exports.isDeno && typeof window !== "undefined";
++exports.isBrowser = !exports.isDeno && (typeof window !== "undefined" || typeof WebSocket !== "undefined");
+ exports.isNode = !exports.isBrowser;

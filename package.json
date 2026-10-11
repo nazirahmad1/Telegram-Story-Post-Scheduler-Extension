@@ -1,0 +1,46 @@
+{
+  "name": "story-extension",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "postinstall": "patch-package",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint src",
+    "preview": "vite preview",
+    "i18n:check": "node scripts/i18n-check.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/noto-sans-arabic": "^5.3.0",
+    "@fontsource/sora": "^5.3.0",
+    "@fontsource/vazirmatn": "^5.3.0",
+    "i18next": "^26.4.0",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "lucide-react": "^1.33.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-i18next": "^17.0.12",
+    "telegram": "^2.26.22"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/chrome": "^0.2.6",
+    "@types/node": "^24.13.3",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "jsdom": "^30.0.1",
+    "oxlint": "^1.75.0",
+    "patch-package": "^8.0.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.2.0",
+    "vite-plugin-node-polyfills": "^0.28.0",
+    "vitest": "^4.1.11"
+  }
+}

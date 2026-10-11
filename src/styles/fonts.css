@@ -1,0 +1,30 @@
+/*
+ * All fonts are bundled locally via npm (@fontsource/*) and served from the
+ * extension's own package — no requests ever leave the extension to Google
+ * Fonts or any other third-party CDN. This matters both for offline/CSP
+ * reliability in a Manifest V3 extension and for user privacy.
+ */
+
+/* Latin + Cyrillic (English, Turkish, Russian, Spanish, French, Italian) */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/inter/cyrillic-400.css";
+@import "@fontsource/inter/cyrillic-500.css";
+
+/* Display face — headings and the wordmark only, used with restraint */
+@import "@fontsource/sora/600.css";
+@import "@fontsource/sora/700.css";
+
+/* Persian (Dari/Pashto-capable) */
+@import "@fontsource/vazirmatn/400.css";
+@import "@fontsource/vazirmatn/500.css";
+@import "@fontsource/vazirmatn/600.css";
+@import "@fontsource/vazirmatn/700.css";
+
+/* Arabic — proper contextual shaping, distinct from the Persian glyph set */
+@import "@fontsource/noto-sans-arabic/400.css";
+@import "@fontsource/noto-sans-arabic/500.css";
+@import "@fontsource/noto-sans-arabic/600.css";
+@import "@fontsource/noto-sans-arabic/700.css";
