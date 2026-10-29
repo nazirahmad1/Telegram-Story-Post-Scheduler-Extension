@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import { ImagePlus, Film, X, Star, AlertCircle, Radio, Users, Lock, Pin, ShieldOff, ArrowLeft, RefreshCw } from "lucide-react";
+import { ImagePlus, Film, X, Star, AlertCircle, Radio, Users, Lock, Pin, ShieldOff, ArrowLeft, RefreshCw, Home } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { Toast } from "../Toast";
 import { ErrorPanel } from "../ErrorPanel";
@@ -72,6 +72,8 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
   const [error, setError] = useState<ErrorDescription | null>(null);
   const [targetFailures, setTargetFailures] = useState<TargetFailure[]>([]);
+  /** True once a publish attempt ended in failure — shows the Retry / go-home actions. */
+  const [publishFailed, setPublishFailed] = useState(false);
   const [loadWarning, setLoadWarning] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const [mediaError, setMediaError] = useState<unknown>(null);
@@ -180,6 +182,7 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
 
   async function handlePublish() {
     setTargetFailures([]);
+    setPublishFailed(false);
     if (!connected) return setError(simpleError("errors.sessionExpired"));
     if (!file) return setError(simpleError("validation.required", "story.chooseMediaFirst"));
     if (captionTooLong) return setError(simpleError("validation.captionTooLong", "errors.detail.captionTooLong.fix"));
@@ -197,6 +200,7 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
     } catch (err) {
       const d = describeTelegramError(err, t);
       setError(d);
+      setPublishFailed(true);
       setToast({ message: d.title, variant: "error" });
       await handleSessionDead(d);
       void refresh();
@@ -238,6 +242,7 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
     const failures = failed.map((r) => ({ title: titleOf(r.target), description: describeTelegramError(r.error, t) }));
     setTargetFailures(failures);
     setError(failures[0].description);
+    setPublishFailed(true);
     await handleSessionDead(failures.find((f) => f.description.sessionDead)?.description);
 
     if (succeeded.length === 0) {
@@ -530,6 +535,17 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
               <ErrorPanel description={f.description} />
             </div>
           ))}
+        </div>
+      )}
+
+      {publishFailed && !busy && (
+        <div className="row" style={{ gap: 8 }}>
+          <button type="button" className="btn btn-primary" onClick={handlePublish}>
+            <RefreshCw size={14} aria-hidden="true" /> {t("common.retry")}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={isEdit ? onDone : () => onNavigate?.("home")}>
+            <Home size={14} aria-hidden="true" /> {isEdit ? t("common.back") : t("navigation.home")}
+          </button>
         </div>
       )}
 

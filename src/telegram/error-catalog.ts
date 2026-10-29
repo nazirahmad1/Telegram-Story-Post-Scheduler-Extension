@@ -77,6 +77,10 @@ const EXACT: Record<string, CatalogMatch> = {
   MEDIA_TYPE_INVALID: { id: "mediaUnsupported" },
   MEDIA_EMPTY: { id: "mediaUnsupported" },
   MEDIA_INVALID: { id: "mediaUnsupported" },
+  // Telegram's generic "the media is not valid" — sent in particular when a
+  // story video arrives without real duration/dimensions (attributes read
+  // failed in the browser) or with a codec/container stories don't accept.
+  MEDIA_FILE_INVALID: { id: "mediaUnsupported" },
   DOCUMENT_INVALID: { id: "mediaUnsupported" },
   VIDEO_CONTENT_TYPE_INVALID: { id: "mediaUnsupported" },
   PHOTO_INVALID_DIMENSIONS: { id: "photoInvalid" },
