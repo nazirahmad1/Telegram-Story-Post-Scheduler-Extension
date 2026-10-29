@@ -6,6 +6,28 @@ import { Raw } from "telegram/events";
 
 import { getEffectiveApiCredentials } from "./config";
 import { clearPersistedSession, getPersistedSession, persistSession } from "./session-storage";
+import {
+  AudienceUnresolvedError,
+  buildPrivacyRules,
+  effectiveConfigForTarget,
+  parsePrivacyRules,
+  audienceFromFlags,
+  type StoryAudience,
+  type StoryAudienceConfig,
+  DEFAULT_AUDIENCE,
+} from "./privacy";
+import {
+  LOGIN_PENDING_MS,
+  RELEASE_SESSION_MESSAGE,
+  SessionBusyError,
+  canReleaseConnection,
+  acquireSessionLock,
+  broadcastReleaseRequest,
+  releaseSessionLock,
+} from "./session-lock";
+
+export { SessionBusyError, AudienceUnresolvedError };
+export type { StoryAudienceConfig };
 
 /**
  * NOTE: this module talks to Telegram's real MTProto servers. The sandbox
@@ -45,9 +67,74 @@ export class ConnectionTimeoutError extends Error {
  */
 const CONNECT_TIMEOUT_MS = 15000;
 
+/** How long a context keeps the connection (and the cross-context session lock) after its last call. */
+const IDLE_RELEASE_MS = 20000;
+let activeOps = 0;
+/** Until when a half-finished login (code/QR sent, not yet confirmed) must keep its connection alive. */
+let loginPendingUntil = 0;
+const canRelease = () => canReleaseConnection({ activeOps, loginPendingUntil, now: Date.now() });
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function disconnectNow(): Promise<void> {
+  loginPendingUntil = 0;
+  const pending = clientPromise;
+  clientPromise = null;
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = null;
+  try {
+    const client = pending ? await pending : null;
+    await client?.disconnect();
+  } catch {
+    // Already gone.
+  } finally {
+    releaseSessionLock();
+  }
+}
+
+function scheduleIdleRelease() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    if (canRelease()) void disconnectNow();
+    else scheduleIdleRelease();
+  }, IDLE_RELEASE_MS);
+}
+
+/** Wraps a long-running call (upload, download, QR wait) so the idle timer can't drop the connection underneath it. */
+async function runOp<T>(fn: () => Promise<T>): Promise<T> {
+  activeOps++;
+  try {
+    return await fn();
+  } finally {
+    activeOps--;
+    scheduleIdleRelease();
+  }
+}
+
+// Another context (typically the scheduler waking up) asks idle holders to let go of the session.
+try {
+  if (typeof chrome !== "undefined" && chrome.runtime?.onMessage) {
+    chrome.runtime.onMessage.addListener((message: unknown) => {
+      if ((message as { type?: string } | null)?.type === RELEASE_SESSION_MESSAGE && canRelease()) {
+        void disconnectNow();
+      }
+    });
+  }
+} catch {
+  // Not running inside an extension.
+}
+
 async function getClient(): Promise<TelegramClient> {
   if (!clientPromise) {
     clientPromise = (async () => {
+      // Ask politely first: if somebody else holds the session, tell them to release it when idle.
+      try {
+        await acquireSessionLock(2500);
+      } catch (err) {
+        if (!(err instanceof SessionBusyError)) throw err;
+        broadcastReleaseRequest();
+        await acquireSessionLock(20000);
+      }
+
       const [persisted, { apiId, apiHash }] = await Promise.all([getPersistedSession(), getApiCredentials()]);
       const session = new StringSession(persisted ?? "");
       const client = new TelegramClient(session, apiId, apiHash, {
@@ -67,12 +154,17 @@ async function getClient(): Promise<TelegramClient> {
         // means the NEXT call starts a fresh attempt instead of forever
         // awaiting this same stuck one.
         clientPromise = null;
+        releaseSessionLock();
         throw err;
       }
 
       return client;
-    })();
+    })().catch((err) => {
+      clientPromise = null;
+      throw err;
+    });
   }
+  scheduleIdleRelease();
   return clientPromise;
 }
 
@@ -96,11 +188,42 @@ export async function resetClientForNewCredentials(): Promise<void> {
 async function saveCurrentSession(client: TelegramClient): Promise<void> {
   const sessionString = client.session.save() as unknown as string;
   if (sessionString) await persistSession(sessionString);
+  loginPendingUntil = 0; // login finished — normal idle release applies again
 }
 
-export async function isAuthorized(): Promise<boolean> {
+export type SessionCheck = "authorized" | "unauthorized";
+
+/**
+ * Whether the stored session is still valid — and, crucially, the ONLY place
+ * that is allowed to answer "unauthorized".
+ *
+ * GramJS's own checkAuthorization() swallows every error (a dropped
+ * connection, a timeout, a flood wait, a DC hiccup) and reports `false`,
+ * which the UI turned into "you are not logged in" for people who were.
+ * Here only an explicit "this session is dead" answer from Telegram — or no
+ * stored session at all — counts as logged out. Anything else (network,
+ * timeout, server error) is rethrown so callers can show "can't reach
+ * Telegram, you're still logged in" instead of throwing the session away.
+ */
+export async function checkSession(): Promise<SessionCheck> {
+  const persisted = await getPersistedSession();
+  if (!persisted) return "unauthorized";
   const client = await getClient();
-  return client.checkAuthorization();
+  try {
+    await client.invoke(new Api.updates.GetState());
+    return "authorized";
+  } catch (err) {
+    if (isSessionInvalidated(err)) {
+      await forgetInvalidSession();
+      return "unauthorized";
+    }
+    throw err;
+  }
+}
+
+/** Boolean convenience over checkSession(); still throws on network-type failures. */
+export async function isAuthorized(): Promise<boolean> {
+  return (await checkSession()) === "authorized";
 }
 
 export interface RequestCodeResult {
@@ -111,10 +234,10 @@ export interface RequestCodeResult {
 export async function requestLoginCode(phoneNumber: string): Promise<RequestCodeResult> {
   const client = await getClient();
   const { apiId, apiHash } = await getApiCredentials();
-  return client.sendCode(
-    { apiId, apiHash },
-    phoneNumber,
-  );
+  const result = await client.sendCode({ apiId, apiHash }, phoneNumber);
+  // Keep THIS connection alive until the code is entered (see canReleaseConnection).
+  loginPendingUntil = Date.now() + LOGIN_PENDING_MS;
+  return result;
 }
 
 export type SubmitCodeResult = { status: "signedIn" } | { status: "passwordNeeded"; hint?: string };
@@ -133,6 +256,7 @@ export async function submitLoginCode(
     return { status: "signedIn" };
   } catch (err) {
     if (err instanceof RPCError && err.errorMessage === "SESSION_PASSWORD_NEEDED") {
+      loginPendingUntil = Date.now() + LOGIN_PENDING_MS; // still mid-login: the 2FA step needs the same connection
       const passwordInfo = await client.invoke(new Api.account.GetPassword());
       return { status: "passwordNeeded", hint: passwordInfo.hint };
     }
@@ -277,6 +401,10 @@ function waitForScanOrExpiry(client: TelegramClient, expiresAtSeconds: number): 
  * servers. Test the full scan -> confirm (-> password) path for real.
  */
 export async function startQrLogin(onToken: (token: QrToken) => void): Promise<QrLoginResult> {
+  return runOp(() => startQrLoginInner(onToken));
+}
+
+async function startQrLoginInner(onToken: (token: QrToken) => void): Promise<QrLoginResult> {
   const client = await getClient();
   const apiCredentials = await getApiCredentials();
 
@@ -300,6 +428,7 @@ export async function startQrLogin(onToken: (token: QrToken) => void): Promise<Q
     }
   } catch (err) {
     if (err instanceof RPCError && err.errorMessage === "SESSION_PASSWORD_NEEDED") {
+      loginPendingUntil = Date.now() + LOGIN_PENDING_MS; // still mid-login: the 2FA step needs the same connection
       const passwordInfo = await client.invoke(new Api.account.GetPassword());
       return { status: "passwordNeeded", hint: passwordInfo.hint };
     }
@@ -313,22 +442,62 @@ export async function logout(): Promise<void> {
     await client.invoke(new Api.auth.LogOut());
   } finally {
     await clearPersistedSession();
-    clientPromise = null;
+    await disconnectNow();
   }
 }
 
-export type StoryPrivacy = "everyone" | "contacts" | "closeFriends";
+export type StoryPrivacy = StoryAudience;
 
-function toPrivacyRules(privacy: StoryPrivacy): Api.TypeInputPrivacyRule[] {
-  switch (privacy) {
-    case "contacts":
-      return [new Api.InputPrivacyValueAllowContacts()];
-    case "closeFriends":
-      return [new Api.InputPrivacyValueAllowCloseFriends()];
-    case "everyone":
-    default:
-      return [new Api.InputPrivacyValueAllowAll()];
+/** Contacts the person can pick from for "selected contacts" / "hide from". */
+export interface ContactOption {
+  id: string;
+  name: string;
+  username: string | null;
+}
+
+let contactInputCache: Map<string, Api.TypeInputUser> | null = null;
+
+async function loadContacts(): Promise<{ options: ContactOption[]; inputs: Map<string, Api.TypeInputUser> }> {
+  const client = await getClient();
+  const result = await client.invoke(new Api.contacts.GetContacts({ hash: 0 as unknown as never }));
+  const options: ContactOption[] = [];
+  const inputs = new Map<string, Api.TypeInputUser>();
+  if (result instanceof Api.contacts.Contacts) {
+    for (const user of result.users) {
+      if (!(user instanceof Api.User) || user.deleted || user.bot) continue;
+      const id = String(user.id);
+      inputs.set(id, utils.getInputUser(user));
+      const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || id;
+      options.push({ id, name, username: user.username ?? null });
+    }
   }
+  contactInputCache = inputs;
+  options.sort((a, b) => a.name.localeCompare(b.name));
+  return { options, inputs };
+}
+
+export async function getContacts(): Promise<ContactOption[]> {
+  return (await loadContacts()).options;
+}
+
+async function resolveInputUsers(ids: string[]): Promise<Map<string, Api.TypeInputUser>> {
+  if (ids.length === 0) return new Map();
+  const cache = contactInputCache ?? (await loadContacts()).inputs;
+  const missing = ids.filter((id) => !cache.has(id));
+  if (missing.length > 0) {
+    // The cache may be stale (a contact was added since) — refresh once before giving up.
+    const fresh = (await loadContacts()).inputs;
+    const stillMissing = ids.filter((id) => !fresh.has(id));
+    if (stillMissing.length > 0) throw new AudienceUnresolvedError(stillMissing);
+    return fresh;
+  }
+  return cache;
+}
+
+async function privacyRulesFor(cfg: StoryAudienceConfig, target: string): Promise<Api.TypeInputPrivacyRule[]> {
+  const effective = effectiveConfigForTarget(cfg, target);
+  const lookup = await resolveInputUsers([...effective.allowUserIds, ...effective.blockUserIds]);
+  return buildPrivacyRules(effective, (ids) => ids.map((id) => lookup.get(id)!));
 }
 
 /** Telegram's allowed story durations, in seconds. 24h is the only one available without Premium. */
@@ -343,10 +512,27 @@ export type StoryPeriodSeconds = (typeof STORY_PERIOD_OPTIONS)[number]["seconds"
 /** "me" for the personal account, or a channel/group's entity id/username as a string for a target that isn't the account itself. */
 export type StoryTarget = "me" | string;
 
+export interface VideoMeta {
+  /** Seconds. */
+  duration: number;
+  width: number;
+  height: number;
+}
+
 export interface PublishStoryParams {
   file: File;
   caption?: string;
   privacy: StoryPrivacy;
+  /** "selected" audience: the only people who can see it (user ids from getContacts). */
+  allowUserIds?: string[];
+  /** "everyone" / "contacts" audience: people the story is hidden from. */
+  blockUserIds?: string[];
+  /** Keep the story on the profile after it expires (Telegram's "Post to profile"). */
+  pinned?: boolean;
+  /** Disallow screenshots, saving and forwarding (Telegram's "protect content"). */
+  noforwards?: boolean;
+  /** Real duration/size of a video. Telegram needs these on the document; without them some videos fail or play wrong. */
+  video?: VideoMeta;
   /** Defaults to ["me"]. Posting to more than one target uploads the file once and calls SendStory once per target. */
   targets?: StoryTarget[];
   /** Seconds; only Premium accounts may pick anything other than 24h — publishStory does NOT itself re-check this, the caller (StoryEditor) already only offers non-24h options once it has confirmed premium via getAccountCapabilities. Telegram's own server enforces it either way. */
@@ -369,6 +555,24 @@ function extractStoryId(updates: Api.TypeUpdates): number | null {
   return null;
 }
 
+function buildInputMedia(file: File, uploaded: Awaited<ReturnType<TelegramClient["uploadFile"]>>, video?: VideoMeta) {
+  if (file.type.startsWith("video/")) {
+    return new Api.InputMediaUploadedDocument({
+      file: uploaded,
+      mimeType: file.type || "video/mp4",
+      attributes: [
+        new Api.DocumentAttributeVideo({
+          duration: video?.duration ?? 0,
+          w: video?.width ?? 0,
+          h: video?.height ?? 0,
+          supportsStreaming: true,
+        }),
+      ],
+    });
+  }
+  return new Api.InputMediaUploadedPhoto({ file: uploaded });
+}
+
 /**
  * Uploads media once and publishes it as a Telegram Story to one or more
  * targets — the personal account ("me") and/or any channel/group the
@@ -385,57 +589,106 @@ export async function publishStory({
   file,
   caption,
   privacy,
+  allowUserIds = [],
+  blockUserIds = [],
+  pinned,
+  noforwards,
+  video,
   targets = ["me"],
   period,
   onProgress,
 }: PublishStoryParams): Promise<PublishStoryResult[]> {
-  const client = await getClient();
+  return runOp(async () => {
+    const client = await getClient();
+    const audience: StoryAudienceConfig = { audience: privacy, allowUserIds, blockUserIds };
 
-  // uploadFile's progress only covers the raw bytes going up (0..1); the
-  // SendStory RPC calls that follow have no granular signal of their own,
-  // so that leg is reported as a fixed 95% while in flight per target.
-  const uploadedFile = await client.uploadFile({
-    file,
-    workers: 1,
-    onProgress: onProgress ? (fraction) => onProgress(Math.min(fraction, 1) * 0.95) : undefined,
-  });
-  const isVideo = file.type.startsWith("video/");
-  const privacyRules = toPrivacyRules(privacy);
+    // Resolve the audience BEFORE spending minutes uploading a big video:
+    // a stale "selected contact" should fail in a second, not after 100%.
+    const rulesByTarget = new Map<StoryTarget, Api.TypeInputPrivacyRule[]>();
+    for (const target of targets) rulesByTarget.set(target, await privacyRulesFor(audience, target));
 
-  const results: PublishStoryResult[] = [];
-  for (const target of targets) {
-    // A fresh InputMedia wrapper per call — GramJS/MTProto consume the
-    // uploaded file reference by value in each request; the underlying
-    // uploaded bytes on Telegram's side are what's actually being reused.
-    const media = isVideo
-      ? new Api.InputMediaUploadedDocument({
-          file: uploadedFile,
-          mimeType: file.type || "video/mp4",
-          attributes: [
-            new Api.DocumentAttributeVideo({ duration: 0, w: 0, h: 0, supportsStreaming: true }),
-          ],
-        })
-      : new Api.InputMediaUploadedPhoto({ file: uploadedFile });
+    // uploadFile's progress only covers the raw bytes going up (0..1); the
+    // SendStory RPC calls that follow have no granular signal of their own,
+    // so that leg is reported as a fixed 95% while in flight per target.
+    const uploadedFile = await client.uploadFile({
+      file,
+      workers: 1,
+      onProgress: onProgress ? (fraction) => onProgress(Math.min(fraction, 1) * 0.95) : undefined,
+    });
 
-    try {
-      const result = await client.invoke(
-        new Api.stories.SendStory({
-          peer: target,
-          media,
-          privacyRules,
-          caption,
-          period,
-          randomId: generateRandomLong(),
-        }),
-      );
-      results.push({ target, storyId: extractStoryId(result), error: null });
-    } catch (error) {
-      results.push({ target, storyId: null, error });
+    const results: PublishStoryResult[] = [];
+    for (const target of targets) {
+      try {
+        const result = await client.invoke(
+          new Api.stories.SendStory({
+            peer: target,
+            // A fresh InputMedia wrapper per call; the uploaded bytes on Telegram's side are what's reused.
+            media: buildInputMedia(file, uploadedFile, video),
+            privacyRules: rulesByTarget.get(target)!,
+            caption,
+            period,
+            pinned: pinned || undefined,
+            noforwards: noforwards || undefined,
+            randomId: generateRandomLong(),
+          }),
+        );
+        results.push({ target, storyId: extractStoryId(result), error: null });
+      } catch (error) {
+        results.push({ target, storyId: null, error });
+      }
     }
-  }
 
-  onProgress?.(1);
-  return results;
+    onProgress?.(1);
+    return results;
+  });
+}
+
+export interface EditStoryParams {
+  story: MyStoryItem;
+  /** New photo/video. Omit to keep the current media untouched. */
+  file?: File;
+  video?: VideoMeta;
+  /** New caption. Omit to keep, pass "" to remove it. */
+  caption?: string;
+  /** New audience. Omit to keep. */
+  audience?: StoryAudienceConfig;
+  /** Pin to / unpin from the profile. Omit to keep. */
+  pinned?: boolean;
+  onProgress?: (fraction: number) => void;
+}
+
+/**
+ * Edits an already-published story in place — Telegram's "Edit story":
+ * replace the media, change the caption and/or who can see it, and
+ * pin/unpin it. Only fields that are actually passed are sent, so
+ * editing a caption never re-uploads media or resets the audience.
+ */
+export async function editStory(params: EditStoryParams): Promise<void> {
+  const { story, file, video, caption, audience, pinned, onProgress } = params;
+  await runOp(async () => {
+    const client = await getClient();
+    const peer = story.target;
+
+    const hasEdit = file !== undefined || caption !== undefined || audience !== undefined;
+    if (hasEdit) {
+      const privacyRules = audience ? await privacyRulesFor(audience, peer) : undefined;
+      let media: Api.TypeInputMedia | undefined;
+      if (file) {
+        const uploaded = await client.uploadFile({
+          file,
+          workers: 1,
+          onProgress: onProgress ? (fraction) => onProgress(Math.min(fraction, 1) * 0.95) : undefined,
+        });
+        media = buildInputMedia(file, uploaded, video);
+      }
+      await client.invoke(new Api.stories.EditStory({ peer, id: story.id, media, caption, privacyRules }));
+    }
+
+    if (pinned !== undefined && pinned !== story.pinned) {
+      await client.invoke(new Api.stories.TogglePinned({ peer, id: [story.id], pinned }));
+    }
+    onProgress?.(1);
+  });
 }
 
 /** Deletes a previously published story from Telegram (not just local history). */
@@ -504,13 +757,6 @@ export async function getStoryTargets(): Promise<StoryTargetOption[]> {
 }
 
 
-function privacyFromRules(rules: Api.TypePrivacyRule[] | undefined): StoryPrivacy {
-  for (const rule of rules ?? []) {
-    if (rule instanceof Api.PrivacyValueAllowCloseFriends) return "closeFriends";
-    if (rule instanceof Api.PrivacyValueAllowContacts) return "contacts";
-  }
-  return "everyone";
-}
 
 function mediaTypeFromStory(media: Api.TypeMessageMedia): "photo" | "video" {
   if (media instanceof Api.MessageMediaDocument) return "video";
@@ -533,18 +779,55 @@ export interface MyStoryItem {
   target: StoryTarget;
   /** Display name for `target` — "" for the personal account (the UI already has its own "My Story" label for that case). */
   targetLabel: string;
+  /** Who can / can't see it. `audienceKnown` is false when Telegram only gave us coarse flags. */
+  audienceConfig: StoryAudienceConfig;
+  audienceKnown: boolean;
+  /** Display names for every user id referenced by audienceConfig. */
+  userNames: Record<string, string>;
+  /** Screenshots/saving/forwarding are blocked for viewers. */
+  noforwards: boolean;
+  /** Has been edited after posting. */
+  edited: boolean;
   /** Kept for the viewer/download — not meant to be read directly by UI code. */
   media: Api.TypeMessageMedia;
 }
 
-function toMyStoryItem(item: Api.StoryItem, target: StoryTarget, targetLabel: string): MyStoryItem {
+function userDisplayName(user: Api.TypeUser): string {
+  if (!(user instanceof Api.User)) return "";
+  return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.username || String(user.id);
+}
+
+function namesFrom(users: Api.TypeUser[] | undefined): Record<string, string> {
+  const names: Record<string, string> = {};
+  for (const user of users ?? []) {
+    if (user instanceof Api.User) names[String(user.id)] = userDisplayName(user);
+  }
+  return names;
+}
+
+function toMyStoryItem(
+  item: Api.StoryItem,
+  target: StoryTarget,
+  targetLabel: string,
+  users?: Api.TypeUser[],
+): MyStoryItem {
+  const hasRules = (item.privacy?.length ?? 0) > 0;
+  const flagAudience = audienceFromFlags(item);
+  const audienceConfig = hasRules
+    ? parsePrivacyRules(item.privacy)
+    : { ...DEFAULT_AUDIENCE, audience: flagAudience ?? (item.public ? "everyone" : "everyone") };
   return {
+    audienceConfig,
+    audienceKnown: hasRules || flagAudience !== null || !!item.public,
+    userNames: namesFrom(users),
+    noforwards: !!item.noforwards,
+    edited: !!item.edited,
     id: item.id,
     date: item.date,
     expireDate: item.expireDate,
     expired: item.expireDate * 1000 <= Date.now(),
     caption: item.caption ?? null,
-    privacy: privacyFromRules(item.privacy),
+    privacy: audienceConfig.audience,
     pinned: item.pinned ?? false,
     mediaType: mediaTypeFromStory(item.media),
     views: item.views?.viewsCount ?? null,
@@ -561,7 +844,7 @@ export async function getMyStories(target: StoryTarget = "me", targetLabel = "")
   const result = await client.invoke(new Api.stories.GetPeerStories({ peer: target }));
   return result.stories.stories
     .filter((s): s is Api.StoryItem => s instanceof Api.StoryItem)
-    .map((s) => toMyStoryItem(s, target, targetLabel))
+    .map((s) => toMyStoryItem(s, target, targetLabel, result.users))
     .sort((a, b) => b.date - a.date);
 }
 
@@ -582,8 +865,33 @@ export async function getMyStoryArchive(
   );
   return result.stories
     .filter((s): s is Api.StoryItem => s instanceof Api.StoryItem)
-    .map((s) => toMyStoryItem(s, target, targetLabel))
+    .map((s) => toMyStoryItem(s, target, targetLabel, result.users))
     .sort((a, b) => b.date - a.date);
+}
+
+export interface StoryLoadFailure {
+  target: StoryTarget;
+  targetLabel: string;
+  error: unknown;
+}
+
+export async function collectAllPages(
+  fetchPage: (offsetId: number) => Promise<{ count: number; stories: Api.StoryItem[]; users: Api.TypeUser[] }>,
+  _target: string,
+  _targetLabel: string,
+): Promise<Api.StoryItem[]> {
+  const all: Api.StoryItem[] = [];
+  let offsetId = 0;
+  
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { stories } = await fetchPage(offsetId);
+    if (stories.length === 0) break;
+    all.push(...stories);
+    if (stories.length < 100) break;
+    offsetId = stories[stories.length - 1].id;
+  }
+  
+  return all;
 }
 
 function logTargetFetchFailure(context: string, target: StoryTarget, err: unknown): void {
@@ -658,6 +966,38 @@ export async function getAllMyStories(): Promise<MyStoryItem[]> {
   return [...byKey.values()].sort((a, b) => b.date - a.date);
 }
 
+export async function getAllMyStoriesDetailed(): Promise<{ stories: MyStoryItem[]; failures: StoryLoadFailure[] }> {
+  const channelTargets = await getStoryTargets().catch((err) => {
+    logTargetFetchFailure("getStoryTargets", "me", err);
+    return [] as StoryTargetOption[];
+  });
+  const allTargets: { id: StoryTarget; label: string }[] = [
+    { id: "me", label: "" },
+    ...channelTargets.map((t) => ({ id: t.id, label: t.title })),
+  ];
+
+  const failures: StoryLoadFailure[] = [];
+  const perTarget = await Promise.all(
+    allTargets.map(async ({ id, label }) => {
+      const [active, archived] = await Promise.all([
+        getMyStories(id, label).catch((err) => {
+          failures.push({ target: id, targetLabel: label, error: err });
+          return [] as MyStoryItem[];
+        }),
+        getMyStoryArchive(id, label).catch((err) => {
+          failures.push({ target: id, targetLabel: label, error: err });
+          return [] as MyStoryItem[];
+        }),
+      ]);
+      return [...active, ...archived];
+    }),
+  );
+
+  const byKey = new Map<string, MyStoryItem>();
+  for (const item of perTarget.flat()) byKey.set(`${item.target}:${item.id}`, item);
+  return { stories: [...byKey.values()].sort((a, b) => b.date - a.date), failures };
+}
+
 /**
  * Downloads a story's actual photo/video bytes (not just its metadata) as
  * a Blob the caller can show in an <img>/<video> or trigger a save-to-disk
@@ -667,15 +1007,87 @@ export async function downloadStoryMedia(
   story: MyStoryItem,
   onProgress?: (fraction: number) => void,
 ): Promise<Blob> {
-  const client = await getClient();
-  const bytes = await client.downloadMedia(story.media, {
-    progressCallback: onProgress
-      ? (received, total) => onProgress(received.toJSNumber() / total.toJSNumber())
-      : undefined,
+  return runOp(async () => {
+    const client = await getClient();
+    const bytes = await client.downloadMedia(story.media, {
+      progressCallback: onProgress
+        ? (received, total) => onProgress(received.toJSNumber() / total.toJSNumber())
+        : undefined,
+    });
+    if (!bytes || typeof bytes === "string") throw new Error("Couldn't download story media.");
+    const mime = story.mediaType === "video" ? "video/mp4" : "image/jpeg";
+    return new Blob([new Uint8Array(bytes)], { type: mime });
   });
-  if (!bytes || typeof bytes === "string") throw new Error("Couldn't download story media.");
-  const mime = story.mediaType === "video" ? "video/mp4" : "image/jpeg";
-  return new Blob([new Uint8Array(bytes)], { type: mime });
+}
+
+export interface StoryViewer {
+  userId: string;
+  name: string;
+  username: string | null;
+  /** Unix seconds. */
+  date: number;
+  /** Emoji the viewer reacted with, if any. */
+  reaction: string | null;
+  /** You blocked this person entirely. */
+  blocked: boolean;
+  /** You hid your stories from this person (they can't see new ones). */
+  hiddenFromThem: boolean;
+}
+
+export interface StoryViewersPage {
+  total: number;
+  forwards: number;
+  reactions: number;
+  viewers: StoryViewer[];
+  nextOffset: string | null;
+}
+
+/**
+ * Who actually watched one of your stories (the same list as Telegram
+ * mobile's "Viewers" sheet). Telegram only serves this to the story's owner.
+ */
+export async function getStoryViewers(
+  story: MyStoryItem,
+  { offset = "", query = "", limit = 50, justContacts = false } = {},
+): Promise<StoryViewersPage> {
+  const client = await getClient();
+  const result = await client.invoke(
+    new Api.stories.GetStoryViewsList({
+      peer: story.target,
+      id: story.id,
+      offset,
+      limit,
+      q: query || undefined,
+      justContacts: justContacts || undefined,
+    }),
+  );
+  const users = new Map<string, Api.User>();
+  for (const u of result.users) if (u instanceof Api.User) users.set(String(u.id), u);
+
+  const viewers: StoryViewer[] = [];
+  for (const view of result.views) {
+    if (!(view instanceof Api.StoryView)) continue;
+    const id = String(view.userId);
+    const user = users.get(id);
+    const reaction =
+      view.reaction instanceof Api.ReactionEmoji ? view.reaction.emoticon : view.reaction ? "★" : null;
+    viewers.push({
+      userId: id,
+      name: user ? userDisplayName(user) : id,
+      username: user?.username ?? null,
+      date: view.date,
+      reaction,
+      blocked: !!view.blocked,
+      hiddenFromThem: !!view.blockedMyStoriesFrom,
+    });
+  }
+  return {
+    total: result.count,
+    forwards: result.forwardsCount,
+    reactions: result.reactionsCount,
+    viewers,
+    nextOffset: result.nextOffset || null,
+  };
 }
 
 const DEFAULT_CAPTION_LIMIT = 200;
@@ -731,7 +1143,11 @@ export function isSessionInvalidated(err: unknown): boolean {
   if (!(err instanceof RPCError)) return false;
   return (
     err.errorMessage === "AUTH_KEY_UNREGISTERED" ||
+    err.errorMessage === "AUTH_KEY_INVALID" ||
+    err.errorMessage === "AUTH_KEY_PERM_EMPTY" ||
+    err.errorMessage === "AUTH_KEY_DUPLICATED" ||
     err.errorMessage === "SESSION_REVOKED" ||
+    err.errorMessage === "SESSION_EXPIRED" ||
     err.errorMessage === "USER_DEACTIVATED" ||
     err.errorMessage === "USER_DEACTIVATED_BAN"
   );
@@ -744,7 +1160,7 @@ export function isSessionInvalidated(err: unknown): boolean {
  */
 export async function forgetInvalidSession(): Promise<void> {
   await clearPersistedSession();
-  clientPromise = null;
+  await disconnectNow();
 }
 
 export { RPCError, FloodWaitError };

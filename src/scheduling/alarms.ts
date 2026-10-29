@@ -18,3 +18,7 @@ export async function createStoryAlarm(scheduledStoryId: string, whenMs: number)
 export async function cancelStoryAlarm(scheduledStoryId: string): Promise<void> {
   await chrome.alarms.clear(alarmNameFor(scheduledStoryId));
 }
+
+/** Automatic retries for temporary failures (offline, Telegram unreachable) — never for a dead session. */
+export const MAX_AUTO_RETRIES = 5;
+export const AUTO_RETRY_DELAY_MS = 2 * 60 * 1000;

@@ -48,7 +48,9 @@
     "selectCountry": "Sélectionner le pays",
     "searchCountry": "Rechercher un pays ou un code",
     "showPassword": "Afficher le mot de passe",
-    "hidePassword": "Masquer le mot de passe"
+    "hidePassword": "Masquer le mot de passe",
+    "offlineTitle": "Impossible de joindre Telegram",
+    "offlineBody": "Votre connexion est enregistrée et n'a pas été supprimée. L'application réessaie automatiquement, ou vous pouvez réessayer maintenant."
   },
   "story": {
     "title": "Créer une story",
@@ -73,7 +75,21 @@
     "publishPartial": "Publié sur {{succeeded}} sur {{total}}.",
     "expiry": "Expire après",
     "expiryHours": "{{hours}} h",
-    "premiumOnly": "Premium uniquement"
+    "premiumOnly": "Premium uniquement",
+    "privacySelected": "Contacts sélectionnés",
+    "editTitle": "Modifier la story",
+    "saveChanges": "Enregistrer les modifications",
+    "editSuccess": "Story mise à jour.",
+    "nothingChanged": "Rien n'a été modifié.",
+    "replaceMedia": "Remplacer la photo ou la vidéo",
+    "loadingCurrentMedia": "Chargement du média actuel…",
+    "chooseMediaFirst": "Choisissez d'abord une photo ou une vidéo.",
+    "options": "Options",
+    "keepOnProfile": "Garder sur mon profil",
+    "keepOnProfileHint": "Après son expiration, la story reste visible sur votre profil.",
+    "protectContent": "Protéger le contenu",
+    "protectContentHint": "Les spectateurs ne pourront ni capturer, ni enregistrer, ni transférer cette story.",
+    "protectContentLocked": "Impossible à modifier après la publication."
   },
   "history": {
     "title": "Historique",
@@ -105,7 +121,16 @@
     "tabScheduled": "Planifiées",
     "select": "Sélectionner",
     "selectedCount": "{{count}} sélectionnées",
-    "bulkDeleted": "{{count}} stories supprimées."
+    "bulkDeleted": "{{count}} stories supprimées.",
+    "editStory": "Modifier la story",
+    "pin": "Garder sur le profil",
+    "unpin": "Retirer du profil",
+    "pinnedDone": "La story restera sur votre profil.",
+    "unpinned": "La story a été retirée de votre profil.",
+    "edited": "Modifiée",
+    "totalCount": "{{n}} stories au total : {{active}} actives, {{expired}} expirées",
+    "partialLoad": "Certaines stories n'ont pas pu être chargées.",
+    "expiredNoEdit": "Telegram ne permet de modifier que les stories encore actives."
   },
   "settings": {
     "title": "Paramètres",
@@ -136,13 +161,159 @@
     "loadAccountInfoFailed": "Impossible de vérifier les détails de votre compte — la limite de légende et la durée peuvent être incorrectes tant que ça ne charge pas.",
     "loadChannelsFailed": "Impossible de charger vos chaînes et groupes — seule votre story personnelle est disponible pour le moment.",
     "missingApiCredentials": "Aucun identifiant API Telegram n'est encore configuré. Ajoutez le vôtre ci-dessous, ou (pour les builds locales) définissez VITE_TELEGRAM_API_ID/VITE_TELEGRAM_API_HASH dans .env.local et reconstruisez.",
-    "connectionTimeout": "Impossible de joindre les serveurs Telegram à temps. Vérifiez votre connexion et réessayez."
+    "connectionTimeout": "Impossible de joindre les serveurs Telegram à temps. Vérifiez votre connexion et réessayez.",
+    "copyCode": "Copier le code d'erreur",
+    "waitOver": "Vous pouvez réessayer maintenant.",
+    "detail": {
+      "sessionEnded": {
+        "title": "Vous êtes déconnecté de Telegram",
+        "reason": "Telegram a mis fin à cette session. Elle a pu être fermée depuis un autre appareil (Paramètres → Appareils), expirer ou être révoquée.",
+        "fix": "Reconnectez-vous avec votre numéro ou un code QR. Les stories programmées seront publiées à votre retour."
+      },
+      "keyDuplicated": {
+        "title": "Cette connexion a été invalidée",
+        "reason": "La même session Telegram a été utilisée à deux endroits en même temps ; Telegram l'a annulée par sécurité.",
+        "fix": "Reconnectez-vous et ne gardez qu'une seule fenêtre Story Publisher active à la fois."
+      },
+      "accountDeactivated": {
+        "title": "Ce compte Telegram est indisponible",
+        "reason": "Telegram indique que le compte est supprimé ou banni.",
+        "fix": "Vérifiez le compte dans l'application Telegram officielle ou contactez le support Telegram."
+      },
+      "storyLimitActive": {
+        "title": "Trop de stories actives",
+        "reason": "Telegram n'autorise qu'un nombre limité de stories actives à la fois, et vous l'avez atteint.",
+        "fix": "Supprimez une story active ou attendez qu'une expire, puis réessayez."
+      },
+      "storyFlood": {
+        "title": "Limite de publication de stories atteinte",
+        "reason": "Telegram limite le nombre de stories qu'un compte peut publier par semaine (limite : {{n}}).",
+        "reasonMonthly": "Telegram limite le nombre de stories qu'un compte peut publier par mois (limite : {{n}}).",
+        "fix": "Attendez la réinitialisation de la limite, ou utilisez un compte Telegram Premium pour des limites plus élevées."
+      },
+      "periodInvalid": {
+        "title": "Cette durée de story n'est pas autorisée",
+        "reason": "Seuls les comptes Telegram Premium peuvent choisir une durée autre que 24 heures.",
+        "fix": "Choisissez 24 heures ou utilisez un compte Premium."
+      },
+      "premiumRequired": {
+        "title": "Telegram Premium est requis",
+        "reason": "Cette action n'est disponible que pour les comptes Telegram Premium.",
+        "fix": "Choisissez une autre option ou passez le compte en Premium dans l'application Telegram."
+      },
+      "boostsRequired": {
+        "title": "Ce canal a besoin de plus de boosts",
+        "reason": "Un canal doit atteindre un certain niveau de boosts avant de pouvoir publier des stories.",
+        "fix": "Boostez le canal dans Telegram ou publiez vers une autre destination."
+      },
+      "noPermission": {
+        "title": "Vous ne pouvez pas publier ici",
+        "reason": "Votre compte n'est pas autorisé à publier des stories dans ce canal ou groupe — le droit d'administrateur « Publier des stories » manque ou vous êtes restreint.",
+        "fix": "Demandez à un propriétaire de vous accorder ce droit, ou retirez cette destination."
+      },
+      "targetUnavailable": {
+        "title": "Ce canal ou groupe est indisponible",
+        "reason": "Telegram ne le trouve pas — il est peut-être devenu privé, a été supprimé, ou vous l'avez quitté.",
+        "fix": "Retirez cette destination ou rejoignez de nouveau le canal, puis réessayez."
+      },
+      "storyGone": {
+        "title": "Cette story n'existe plus",
+        "reason": "Elle a été supprimée ou a expiré et a été retirée de Telegram.",
+        "fix": "Rechargez l'historique pour voir la liste actuelle."
+      },
+      "notModified": {
+        "title": "Rien n'a été modifié",
+        "reason": "Telegram a reçu exactement le même contenu, la même audience et les mêmes réglages que ceux de la story.",
+        "fix": "Modifiez d'abord quelque chose, puis enregistrez."
+      },
+      "captionTooLong": {
+        "title": "La légende est trop longue",
+        "reason": "La légende dépasse la limite de votre compte.",
+        "fix": "Raccourcissez-la (les comptes Premium ont une limite plus élevée)."
+      },
+      "mediaTooBig": {
+        "title": "Le fichier est trop volumineux",
+        "reason": "Telegram a refusé l'envoi car le fichier dépasse la taille autorisée.",
+        "fix": "Utilisez une vidéo plus courte ou plus légère, ou une photo de moindre résolution."
+      },
+      "mediaUnsupported": {
+        "title": "Ce fichier ne peut pas servir de story",
+        "reason": "Telegram n'accepte pas le format ou le codec de cette photo ou vidéo.",
+        "fix": "Utilisez une photo JPG ou PNG, ou une vidéo MP4 (H.264)."
+      },
+      "photoInvalid": {
+        "title": "La photo n'a pas pu être traitée",
+        "reason": "Telegram a refusé la photo à cause de sa taille, de ses dimensions ou de son encodage.",
+        "fix": "Réenregistrez-la en JPG, ou zoomez/recadrez-la dans l'éditeur pour qu'elle soit régénérée, puis réessayez."
+      },
+      "audienceInvalid": {
+        "title": "La sélection d'audience est invalide",
+        "reason": "Telegram a refusé la liste des personnes pouvant voir la story ou à qui elle est masquée — elles sont trop nombreuses ou l'une n'est pas valide.",
+        "fix": "Réduisez la sélection ou rechoisissez les personnes, puis réessayez."
+      },
+      "audienceUnresolved": {
+        "title": "Certaines personnes sélectionnées sont introuvables",
+        "reason": "{{n}} des personnes sélectionnées ne sont plus dans vos contacts ; Telegram ne peut donc pas savoir de qui il s'agit.",
+        "fix": "Ouvrez le sélecteur d'audience et choisissez de nouveau les personnes."
+      },
+      "apiCredentials": {
+        "title": "Identifiants API refusés",
+        "reason": "Telegram a refusé ce couple api_id / api_hash — il est invalide, ou trop de comptes l'ont utilisé.",
+        "fix": "Créez votre propre couple sur my.telegram.org/apps et saisissez-le dans Paramètres → Connexion API."
+      },
+      "phoneBanned": {
+        "title": "Ce numéro de téléphone est banni",
+        "reason": "Telegram a interdit la connexion avec ce numéro.",
+        "fix": "Contactez le support Telegram."
+      },
+      "phoneFlood": {
+        "title": "Trop de tentatives de connexion",
+        "reason": "Telegram a temporairement bloqué les tentatives de connexion pour ce numéro.",
+        "fix": "Attendez quelques heures avant de réessayer."
+      },
+      "floodWait": {
+        "title": "Telegram vous demande de ralentir",
+        "reason": "Trop de requêtes ont été envoyées en peu de temps.",
+        "fix": "Réessayez à la fin de l'attente."
+      },
+      "serverError": {
+        "title": "Telegram rencontre un problème temporaire",
+        "reason": "Les serveurs de Telegram ont renvoyé une erreur interne.",
+        "fix": "Patientez un instant et réessayez."
+      },
+      "network": {
+        "title": "Impossible de joindre Telegram",
+        "reason": "La connexion réseau a échoué ou a été interrompue. Vous êtes toujours connecté.",
+        "fix": "Vérifiez votre connexion internet (et tout VPN ou proxy), puis réessayez."
+      },
+      "connectionTimeout": {
+        "title": "Telegram met trop de temps à répondre",
+        "reason": "Aucune réponse n'est arrivée à temps — en général une connexion lente ou bloquée. Vous êtes toujours connecté.",
+        "fix": "Vérifiez votre connexion internet (et tout VPN ou proxy), puis réessayez."
+      },
+      "sessionBusy": {
+        "title": "Une autre fenêtre utilise votre compte",
+        "reason": "Une autre fenêtre Story Publisher ou une publication programmée utilise la connexion Telegram en ce moment.",
+        "fix": "Attendez quelques secondes ou fermez l'autre fenêtre, puis réessayez."
+      },
+      "missingApi": {
+        "title": "Identifiants API manquants",
+        "reason": "Aucun api_id / api_hash Telegram n'est configuré.",
+        "fix": "Ajoutez les vôtres dans Paramètres → Connexion API (à obtenir sur my.telegram.org/apps)."
+      },
+      "unknown": {
+        "title": "Une erreur est survenue",
+        "reason": "Telegram a renvoyé une erreur que cette application ne reconnaît pas encore.",
+        "fix": "Réessayez. Si cela continue, joignez le code d'erreur ci-dessous à votre signalement."
+      }
+    }
   },
   "validation": {
     "required": "Ce champ est obligatoire.",
     "invalidPhoneNumber": "Entrez un numéro de téléphone valide.",
     "invalidCode": "Entrez un code de connexion valide.",
-    "captionTooLong": "La légende est trop longue."
+    "captionTooLong": "La légende est trop longue.",
+    "selectedEmpty": "Choisissez au moins un contact."
   },
   "toast": {
     "storyPublished": "Story publiée.",
@@ -196,5 +367,55 @@
     "invalidId": "api_id doit être uniquement le numéro de my.telegram.org/apps.",
     "invalidHash": "api_hash doit être le code de 32 caractères de my.telegram.org/apps.",
     "saved": "Identifiants API mis à jour."
+  },
+  "mediaEditor": {
+    "zoom": "Zoom",
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "fit": "Ajuster",
+    "fill": "Remplir",
+    "rotate": "Pivoter",
+    "flip": "Retourner",
+    "adjust": "Régler",
+    "reset": "Réinitialiser",
+    "tools": "Outils photo",
+    "brightness": "Luminosité",
+    "contrast": "Contraste",
+    "saturation": "Saturation",
+    "hint": "Glissez pour déplacer · faites défiler ou pincez pour zoomer · double-clic pour basculer le zoom",
+    "videoNote": "Le zoom, le recadrage et les réglages fonctionnent sur les photos. Les vidéos sont publiées telles quelles."
+  },
+  "audience": {
+    "whoCanSee": "Qui peut voir cette story",
+    "canTitle": "Peuvent la voir :",
+    "cantTitle": "Ne peuvent pas la voir :",
+    "canEveryone": "tout le monde sur Telegram.",
+    "canContacts": "tous vos contacts.",
+    "canCloseFriends": "uniquement vos Amis proches.",
+    "canSelected": "uniquement les contacts que vous avez choisis ({{n}}) : {{names}}.",
+    "canSelectedNone": "personne pour l'instant — choisissez au moins un contact.",
+    "cantNobody": "personne n'est exclu.",
+    "cantNonContacts": "les personnes qui ne sont pas dans vos contacts.",
+    "cantNonCloseFriends": "toute personne qui n'est pas un Ami proche.",
+    "cantEveryoneElse": "tous ceux que vous n'avez pas choisis.",
+    "cantHidden": "les personnes à qui vous l'avez masquée ({{n}}) : {{names}}.",
+    "channelAll": "Les stories de canal sont visibles par toute personne pouvant voir les stories du canal — il n'y a pas de choix d'audience.",
+    "unknown": "Telegram n'a pas indiqué qui peut voir cette story.",
+    "unknownEdit": "L'audience actuelle n'a pas pu être lue ; elle reste inchangée sauf si vous en choisissez une nouvelle.",
+    "andMore": "+{{n}} de plus",
+    "chooseContacts": "Choisir des contacts",
+    "hideFrom": "Masquer à…",
+    "selectedCount": "{{n}} sélectionné(s)",
+    "searchContacts": "Rechercher des contacts",
+    "noContacts": "Votre liste de contacts est vide."
+  },
+  "viewers": {
+    "show": "Qui l'a vue",
+    "hide": "Masquer les spectateurs",
+    "search": "Rechercher des spectateurs",
+    "empty": "Aucun spectateur pour l'instant.",
+    "loadMore": "Charger plus",
+    "blocked": "Bloqué par vous",
+    "hiddenFrom": "Vos stories lui sont masquées"
   }
 }

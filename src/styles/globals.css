@@ -650,6 +650,12 @@ select {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  border-radius: var(--radius);
+}
+.stat-card:hover {
+  background-color: var(--bg-hover);
 }
 .stat-value {
   font-family: var(--font-display);
@@ -944,4 +950,183 @@ select {
   justify-content: space-between;
   font-size: 12px;
   color: var(--ink-soft);
+}
+
+/* ---------- Error panel ---------- */
+
+.error-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  border-inline-start: 3px solid var(--danger);
+  text-align: start;
+}
+.error-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 13px;
+}
+.error-panel-reason,
+.error-panel-fix {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.error-panel-fix {
+  color: var(--ink-soft);
+}
+.error-panel-code {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px dashed var(--danger);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 11px;
+  cursor: pointer;
+}
+.error-panel-code code {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* ---------- Media editor ---------- */
+
+.media-editor-frame {
+  max-width: 240px;
+  touch-action: none;
+}
+.media-editor-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.media-editor-canvas:active {
+  cursor: grabbing;
+}
+.media-editor-zoom input[type="range"] {
+  accent-color: var(--signal);
+}
+
+/* ---------- Audience / contacts ---------- */
+
+.audience-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--signal-soft);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.contact-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border, rgb(128 128 128 / 0.25));
+  border-radius: var(--radius-md);
+}
+.contact-search {
+  gap: 6px;
+}
+.contact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.contact-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 4px;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.contact-name {
+  font-weight: 600;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.contact-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--ink-soft);
+  border-radius: 5px;
+}
+.contact-check.is-on {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: white;
+}
+.option-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.option-row input {
+  margin-top: 3px;
+  accent-color: var(--signal);
+}
+.viewers-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+.viewer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 0;
+}
+.story-viewer-audience {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ---------- RTL / LTR safety for the new screens ---------- */
+.contact-name,
+.viewer-row .helper-text,
+.audience-summary,
+.error-panel,
+.error-panel-reason,
+.error-panel-fix {
+  unicode-bidi: plaintext; /* every line/segment takes the direction of its own first strong character */
+}
+.media-editor-canvas,
+.media-editor-frame {
+  direction: ltr; /* the picture itself is never mirrored in RTL languages */
+}
+.contact-list,
+.viewers-panel {
+  text-align: start;
 }

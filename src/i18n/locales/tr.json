@@ -48,7 +48,9 @@
     "selectCountry": "Ülke seçin",
     "searchCountry": "Ülke veya kod ara",
     "showPassword": "Şifreyi göster",
-    "hidePassword": "Şifreyi gizle"
+    "hidePassword": "Şifreyi gizle",
+    "offlineTitle": "Telegram'a ulaşılamıyor",
+    "offlineBody": "Oturumunuz kayıtlı ve silinmedi. Uygulama otomatik olarak yeniden dener — ya da şimdi kendiniz deneyebilirsiniz."
   },
   "story": {
     "title": "Hikaye Oluştur",
@@ -73,7 +75,21 @@
     "publishPartial": "{{total}} hedeften {{succeeded}}'ine paylaşıldı.",
     "expiry": "Şu süre sonra biter",
     "expiryHours": "{{hours}} sa",
-    "premiumOnly": "Yalnızca Premium"
+    "premiumOnly": "Yalnızca Premium",
+    "privacySelected": "Seçili kişiler",
+    "editTitle": "Hikâyeyi Düzenle",
+    "saveChanges": "Değişiklikleri kaydet",
+    "editSuccess": "Hikâye güncellendi.",
+    "nothingChanged": "Hiçbir şey değişmedi.",
+    "replaceMedia": "Fotoğrafı veya videoyu değiştir",
+    "loadingCurrentMedia": "Mevcut medya yükleniyor…",
+    "chooseMediaFirst": "Önce bir fotoğraf veya video seçin.",
+    "options": "Seçenekler",
+    "keepOnProfile": "Profilimde tut",
+    "keepOnProfileHint": "Süresi dolduktan sonra hikâye profilinizde görünmeye devam eder.",
+    "protectContent": "İçeriği koru",
+    "protectContentHint": "İzleyiciler ekran görüntüsü alamaz, kaydedemez veya iletemez.",
+    "protectContentLocked": "Paylaşıldıktan sonra değiştirilemez."
   },
   "history": {
     "title": "Geçmiş",
@@ -105,7 +121,16 @@
     "tabScheduled": "Zamanlanan",
     "select": "Seç",
     "selectedCount": "{{count}} seçildi",
-    "bulkDeleted": "{{count}} hikaye silindi."
+    "bulkDeleted": "{{count}} hikaye silindi.",
+    "editStory": "Hikâyeyi düzenle",
+    "pin": "Profilde tut",
+    "unpin": "Profilden kaldır",
+    "pinnedDone": "Hikâye profilinizde kalacak.",
+    "unpinned": "Hikâye profilinizden kaldırıldı.",
+    "edited": "Düzenlendi",
+    "totalCount": "Toplam {{n}} hikâye — {{active}} aktif, {{expired}} süresi dolmuş",
+    "partialLoad": "Bazı hikâyeler yüklenemedi.",
+    "expiredNoEdit": "Telegram yalnızca hâlâ aktif olan hikâyelerin düzenlenmesine izin verir."
   },
   "settings": {
     "title": "Ayarlar",
@@ -135,13 +160,159 @@
     "loadAccountInfoFailed": "Hesap bilgileriniz kontrol edilemedi — bu yüklenene kadar açıklama sınırı ve süre seçenekleri hatalı olabilir.",
     "loadChannelsFailed": "Kanallarınız ve gruplarınız yüklenemedi — şu anda yalnızca kişisel hikayeniz kullanılabilir.",
     "missingApiCredentials": "Henüz Telegram API bilgisi ayarlanmadı. Aşağıya kendinizinkini ekleyin veya (yerel derlemeler için) .env.local dosyasında VITE_TELEGRAM_API_ID/VITE_TELEGRAM_API_HASH değerlerini ayarlayıp yeniden derleyin.",
-    "connectionTimeout": "Telegram sunucularına zamanında ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin."
+    "connectionTimeout": "Telegram sunucularına zamanında ulaşılamadı. Bağlantınızı kontrol edip tekrar deneyin.",
+    "copyCode": "Hata kodunu kopyala",
+    "waitOver": "Şimdi tekrar deneyebilirsiniz.",
+    "detail": {
+      "sessionEnded": {
+        "title": "Telegram oturumunuz kapandı",
+        "reason": "Telegram bu oturumu sonlandırdı. Başka bir cihazdan (Ayarlar → Cihazlar) kapatılmış, süresi dolmuş veya iptal edilmiş olabilir.",
+        "fix": "Telefon numaranız veya QR kodla tekrar giriş yapın. Zamanlanmış hikâyeler döndüğünüzde yayınlanır."
+      },
+      "keyDuplicated": {
+        "title": "Bu oturum geçersiz kılındı",
+        "reason": "Aynı Telegram oturumu aynı anda iki yerde kullanıldı; Telegram güvenlik için iptal etti.",
+        "fix": "Tekrar giriş yapın ve aynı anda yalnızca tek bir Story Publisher penceresini açık tutun."
+      },
+      "accountDeactivated": {
+        "title": "Bu Telegram hesabı kullanılamıyor",
+        "reason": "Telegram hesabın silindiğini veya yasaklandığını bildiriyor.",
+        "fix": "Hesabı resmi Telegram uygulamasında kontrol edin veya Telegram desteğiyle iletişime geçin."
+      },
+      "storyLimitActive": {
+        "title": "Çok fazla aktif hikâye",
+        "reason": "Telegram aynı anda sınırlı sayıda aktif hikâyeye izin verir ve bu sınıra ulaştınız.",
+        "fix": "Aktif bir hikâyeyi silin veya birinin süresinin dolmasını bekleyin, sonra tekrar deneyin."
+      },
+      "storyFlood": {
+        "title": "Hikâye paylaşma sınırına ulaşıldı",
+        "reason": "Telegram bir hesabın haftada paylaşabileceği hikâye sayısını sınırlar (sınır: {{n}}).",
+        "reasonMonthly": "Telegram bir hesabın ayda paylaşabileceği hikâye sayısını sınırlar (sınır: {{n}}).",
+        "fix": "Sınır sıfırlanana kadar bekleyin veya daha yüksek sınırlar için Telegram Premium'lu bir hesap kullanın."
+      },
+      "periodInvalid": {
+        "title": "Bu hikâye süresine izin verilmiyor",
+        "reason": "24 saatten farklı bir süreyi yalnızca Telegram Premium hesapları seçebilir.",
+        "fix": "24 saati seçin veya Premium bir hesap kullanın."
+      },
+      "premiumRequired": {
+        "title": "Telegram Premium gerekli",
+        "reason": "Bu işlem yalnızca Telegram Premium hesaplarında kullanılabilir.",
+        "fix": "Başka bir seçenek seçin veya hesabı Telegram uygulamasından yükseltin."
+      },
+      "boostsRequired": {
+        "title": "Bu kanalın daha fazla boost'a ihtiyacı var",
+        "reason": "Bir kanalın hikâye paylaşabilmesi için belirli bir boost seviyesine ulaşması gerekir.",
+        "fix": "Kanalı Telegram'da boost'layın veya başka bir hedefe paylaşın."
+      },
+      "noPermission": {
+        "title": "Buraya paylaşım yapamazsınız",
+        "reason": "Hesabınızın bu kanalda veya grupta hikâye paylaşma izni yok — «Hikâye paylaş» yönetici yetkisi eksik ya da kısıtlanmışsınız.",
+        "fix": "Sahibinden bu yetkiyi vermesini isteyin veya bu hedefi kaldırın."
+      },
+      "targetUnavailable": {
+        "title": "Bu kanal veya grup kullanılamıyor",
+        "reason": "Telegram bulamıyor — gizli hâle gelmiş, silinmiş olabilir ya da ayrılmış olabilirsiniz.",
+        "fix": "Bu hedefi kaldırın veya kanala yeniden katılıp tekrar deneyin."
+      },
+      "storyGone": {
+        "title": "Bu hikâye artık yok",
+        "reason": "Silinmiş veya süresi dolmuş ve Telegram'dan kaldırılmış.",
+        "fix": "Güncel listeyi görmek için geçmişi yeniden yükleyin."
+      },
+      "notModified": {
+        "title": "Hiçbir şey değişmedi",
+        "reason": "Telegram, hikâyede zaten bulunan içerik, hedef kitle ve ayarların aynısını aldı.",
+        "fix": "Önce bir şeyi değiştirin, sonra kaydedin."
+      },
+      "captionTooLong": {
+        "title": "Açıklama çok uzun",
+        "reason": "Açıklama hesabınızın sınırından uzun.",
+        "fix": "Açıklamayı kısaltın (Premium hesapların sınırı daha yüksektir)."
+      },
+      "mediaTooBig": {
+        "title": "Dosya çok büyük",
+        "reason": "Dosya izin verilen boyuttan büyük olduğu için Telegram yüklemeyi reddetti.",
+        "fix": "Daha kısa veya daha küçük bir video ya da daha düşük çözünürlüklü bir fotoğraf kullanın."
+      },
+      "mediaUnsupported": {
+        "title": "Bu dosya hikâye olarak kullanılamaz",
+        "reason": "Telegram bu fotoğraf veya video biçimini ya da kodeğini kabul etmiyor.",
+        "fix": "JPG veya PNG fotoğraf, ya da MP4 (H.264) video kullanın."
+      },
+      "photoInvalid": {
+        "title": "Fotoğraf işlenemedi",
+        "reason": "Telegram fotoğrafı boyutu, ölçüleri veya kodlaması nedeniyle reddetti.",
+        "fix": "JPG olarak yeniden kaydedin veya düzenleyicide yakınlaştırıp kırparak yeniden oluşturulmasını sağlayın, sonra tekrar deneyin."
+      },
+      "audienceInvalid": {
+        "title": "Hedef kitle seçimi geçersiz",
+        "reason": "Telegram, hikâyeyi görebilecek veya hikâyenin gizlendiği kişilerin listesini reddetti — çok fazla kişi var ya da biri geçerli değil.",
+        "fix": "Seçimi azaltın veya kişileri yeniden seçin, sonra tekrar deneyin."
+      },
+      "audienceUnresolved": {
+        "title": "Seçilen bazı kişiler bulunamadı",
+        "reason": "Seçilen kişilerden {{n}} tanesi artık kişilerinizde değil; bu yüzden Telegram'a kim oldukları söylenemiyor.",
+        "fix": "Hedef kitle seçiciyi açın ve kişileri yeniden seçin."
+      },
+      "apiCredentials": {
+        "title": "API bilgileri reddedildi",
+        "reason": "Telegram bu api_id / api_hash çiftini reddetti — geçersiz ya da çok fazla hesap aynı çifti kullanmış.",
+        "fix": "my.telegram.org/apps adresinden kendi çiftinizi oluşturun ve Ayarlar → API bağlantısı bölümüne girin."
+      },
+      "phoneBanned": {
+        "title": "Bu telefon numarası yasaklı",
+        "reason": "Telegram bu numaranın giriş yapmasını yasakladı.",
+        "fix": "Telegram desteğiyle iletişime geçin."
+      },
+      "phoneFlood": {
+        "title": "Çok fazla giriş denemesi",
+        "reason": "Telegram bu numara için giriş denemelerini geçici olarak engelledi.",
+        "fix": "Tekrar denemeden önce birkaç saat bekleyin."
+      },
+      "floodWait": {
+        "title": "Telegram yavaşlamanızı istiyor",
+        "reason": "Kısa sürede çok fazla istek gönderildi.",
+        "fix": "Bekleme süresi bittikten sonra tekrar deneyin."
+      },
+      "serverError": {
+        "title": "Telegram'da geçici bir sorun var",
+        "reason": "Telegram sunucuları dahili bir hata döndürdü.",
+        "fix": "Biraz bekleyip tekrar deneyin."
+      },
+      "network": {
+        "title": "Telegram'a ulaşılamıyor",
+        "reason": "Ağ bağlantısı başarısız oldu veya kesildi. Hâlâ giriş yapmış durumdasınız.",
+        "fix": "İnternet bağlantınızı (ve varsa VPN veya proxy'yi) kontrol edip tekrar deneyin."
+      },
+      "connectionTimeout": {
+        "title": "Telegram geç yanıt verdi",
+        "reason": "Zamanında yanıt gelmedi — genellikle yavaş veya engellenmiş bir bağlantı nedeniyle. Hâlâ giriş yapmış durumdasınız.",
+        "fix": "İnternet bağlantınızı (ve varsa VPN veya proxy'yi) kontrol edip tekrar deneyin."
+      },
+      "sessionBusy": {
+        "title": "Başka bir pencere hesabınızı kullanıyor",
+        "reason": "Başka bir Story Publisher penceresi veya zamanlanmış bir paylaşım şu an Telegram bağlantısını kullanıyor.",
+        "fix": "Birkaç saniye bekleyin veya diğer pencereyi kapatın, sonra tekrar deneyin."
+      },
+      "missingApi": {
+        "title": "API bilgileri eksik",
+        "reason": "Telegram api_id / api_hash ayarlanmamış.",
+        "fix": "Kendi bilgilerinizi Ayarlar → API bağlantısı bölümüne ekleyin (my.telegram.org/apps adresinden alın)."
+      },
+      "unknown": {
+        "title": "Bir şeyler ters gitti",
+        "reason": "Telegram, bu uygulamanın henüz tanımadığı bir hata döndürdü.",
+        "fix": "Tekrar deneyin. Devam ederse bildirirken aşağıdaki hata kodunu da ekleyin."
+      }
+    }
   },
   "validation": {
     "required": "Bu alan zorunludur.",
     "invalidPhoneNumber": "Geçerli bir telefon numarası girin.",
     "invalidCode": "Geçerli bir giriş kodu girin.",
-    "captionTooLong": "Açıklama çok uzun."
+    "captionTooLong": "Açıklama çok uzun.",
+    "selectedEmpty": "En az bir kişi seçin."
   },
   "toast": {
     "storyPublished": "Hikaye yayınlandı.",
@@ -195,5 +366,55 @@
     "invalidId": "api_id yalnızca my.telegram.org/apps üzerindeki sayı olmalı.",
     "invalidHash": "api_hash, my.telegram.org/apps üzerindeki 32 karakterlik kod olmalı.",
     "saved": "API bilgileri güncellendi."
+  },
+  "mediaEditor": {
+    "zoom": "Yakınlaştır",
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır",
+    "fit": "Sığdır",
+    "fill": "Doldur",
+    "rotate": "Döndür",
+    "flip": "Çevir",
+    "adjust": "Ayarla",
+    "reset": "Sıfırla",
+    "tools": "Fotoğraf araçları",
+    "brightness": "Parlaklık",
+    "contrast": "Kontrast",
+    "saturation": "Doygunluk",
+    "hint": "Taşımak için sürükleyin · yakınlaştırmak için kaydırın veya çimdikleyin · yakınlaştırmayı değiştirmek için çift tıklayın",
+    "videoNote": "Yakınlaştırma, kırpma ve ayarlar fotoğraflarda çalışır. Videolar olduğu gibi paylaşılır."
+  },
+  "audience": {
+    "whoCanSee": "Bu hikâyeyi kimler görebilir",
+    "canTitle": "Görebilir:",
+    "cantTitle": "Göremez:",
+    "canEveryone": "Telegram'daki herkes.",
+    "canContacts": "tüm kişileriniz.",
+    "canCloseFriends": "yalnızca Yakın Arkadaşlarınız.",
+    "canSelected": "yalnızca seçtiğiniz kişiler ({{n}}): {{names}}.",
+    "canSelectedNone": "şimdilik kimse — en az bir kişi seçin.",
+    "cantNobody": "hiç kimse hariç tutulmadı.",
+    "cantNonContacts": "kişilerinizde olmayanlar.",
+    "cantNonCloseFriends": "Yakın Arkadaş olmayan herkes.",
+    "cantEveryoneElse": "seçmediğiniz herkes.",
+    "cantHidden": "gizlediğiniz kişiler ({{n}}): {{names}}.",
+    "channelAll": "Kanal hikâyeleri, kanalın hikâyelerini görüntüleyebilen herkese görünür — hedef kitle seçimi yoktur.",
+    "unknown": "Telegram bu hikâyeyi kimlerin görebildiğini bildirmedi.",
+    "unknownEdit": "Mevcut hedef kitle okunamadı; yeni bir tane seçmezseniz olduğu gibi kalır.",
+    "andMore": "+{{n}} kişi daha",
+    "chooseContacts": "Kişileri seç",
+    "hideFrom": "Şunlardan gizle…",
+    "selectedCount": "{{n}} seçildi",
+    "searchContacts": "Kişilerde ara",
+    "noContacts": "Kişi listeniz boş."
+  },
+  "viewers": {
+    "show": "Kimler izledi",
+    "hide": "İzleyicileri gizle",
+    "search": "İzleyicilerde ara",
+    "empty": "Henüz izleyen yok.",
+    "loadMore": "Daha fazla yükle",
+    "blocked": "Sizin tarafınızdan engellendi",
+    "hiddenFrom": "Hikâyeleriniz ondan gizli"
   }
 }

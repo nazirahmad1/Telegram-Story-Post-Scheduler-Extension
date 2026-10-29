@@ -48,7 +48,9 @@
     "selectCountry": "Seleccionar país",
     "searchCountry": "Buscar país o código",
     "showPassword": "Mostrar contraseña",
-    "hidePassword": "Ocultar contraseña"
+    "hidePassword": "Ocultar contraseña",
+    "offlineTitle": "No se puede conectar con Telegram",
+    "offlineBody": "Tu sesión está guardada y no se ha eliminado. La app reintenta automáticamente, o puedes reintentar ahora."
   },
   "story": {
     "title": "Crear historia",
@@ -73,7 +75,21 @@
     "publishPartial": "Publicado en {{succeeded}} de {{total}}.",
     "expiry": "Caduca tras",
     "expiryHours": "{{hours}} h",
-    "premiumOnly": "Solo Premium"
+    "premiumOnly": "Solo Premium",
+    "privacySelected": "Contactos seleccionados",
+    "editTitle": "Editar historia",
+    "saveChanges": "Guardar cambios",
+    "editSuccess": "Historia actualizada.",
+    "nothingChanged": "No se cambió nada.",
+    "replaceMedia": "Reemplazar foto o vídeo",
+    "loadingCurrentMedia": "Cargando el archivo actual…",
+    "chooseMediaFirst": "Elige primero una foto o un vídeo.",
+    "options": "Opciones",
+    "keepOnProfile": "Mantener en mi perfil",
+    "keepOnProfileHint": "Cuando caduque, la historia seguirá visible en tu perfil.",
+    "protectContent": "Proteger contenido",
+    "protectContentHint": "Los espectadores no podrán hacer capturas, guardar ni reenviar esta historia.",
+    "protectContentLocked": "No se puede cambiar después de publicar."
   },
   "history": {
     "title": "Historial",
@@ -105,7 +121,16 @@
     "tabScheduled": "Programadas",
     "select": "Seleccionar",
     "selectedCount": "{{count}} seleccionadas",
-    "bulkDeleted": "{{count}} historias eliminadas."
+    "bulkDeleted": "{{count}} historias eliminadas.",
+    "editStory": "Editar historia",
+    "pin": "Mantener en el perfil",
+    "unpin": "Quitar del perfil",
+    "pinnedDone": "La historia se quedará en tu perfil.",
+    "unpinned": "La historia se quitó de tu perfil.",
+    "edited": "Editada",
+    "totalCount": "{{n}} historias en total: {{active}} activas, {{expired}} caducadas",
+    "partialLoad": "No se pudieron cargar algunas historias.",
+    "expiredNoEdit": "Telegram solo permite editar historias que siguen activas."
   },
   "settings": {
     "title": "Configuración",
@@ -136,13 +161,159 @@
     "loadAccountInfoFailed": "No se pudieron comprobar los datos de tu cuenta — el límite de la leyenda y la duración pueden no ser correctos hasta que esto cargue.",
     "loadChannelsFailed": "No se pudieron cargar tus canales y grupos — por ahora solo está disponible tu historia personal.",
     "missingApiCredentials": "Aún no hay credenciales de API de Telegram configuradas. Añade las tuyas abajo, o (para builds locales) define VITE_TELEGRAM_API_ID/VITE_TELEGRAM_API_HASH en .env.local y reconstruye.",
-    "connectionTimeout": "No se pudo conectar con los servidores de Telegram a tiempo. Revisa tu conexión e inténtalo de nuevo."
+    "connectionTimeout": "No se pudo conectar con los servidores de Telegram a tiempo. Revisa tu conexión e inténtalo de nuevo.",
+    "copyCode": "Copiar código de error",
+    "waitOver": "Ya puedes volver a intentarlo.",
+    "detail": {
+      "sessionEnded": {
+        "title": "Has cerrado sesión en Telegram",
+        "reason": "Telegram terminó esta sesión. Pudo cerrarse desde otro dispositivo (Ajustes → Dispositivos), caducar o ser revocada.",
+        "fix": "Vuelve a iniciar sesión con tu número o un código QR. Las historias programadas se publicarán cuando vuelvas."
+      },
+      "keyDuplicated": {
+        "title": "Esta sesión fue invalidada",
+        "reason": "La misma sesión de Telegram se usó desde dos lugares a la vez y Telegram la canceló por seguridad.",
+        "fix": "Inicia sesión de nuevo y mantén activa solo una ventana de Story Publisher a la vez."
+      },
+      "accountDeactivated": {
+        "title": "Esta cuenta de Telegram no está disponible",
+        "reason": "Telegram indica que la cuenta fue eliminada o bloqueada.",
+        "fix": "Revisa la cuenta en la app oficial de Telegram o contacta con el soporte de Telegram."
+      },
+      "storyLimitActive": {
+        "title": "Demasiadas historias activas",
+        "reason": "Telegram permite un número limitado de historias activas a la vez y ya lo alcanzaste.",
+        "fix": "Elimina una historia activa o espera a que caduque una, y vuelve a intentarlo."
+      },
+      "storyFlood": {
+        "title": "Límite de publicación de historias alcanzado",
+        "reason": "Telegram limita cuántas historias puede publicar una cuenta por semana (límite: {{n}}).",
+        "reasonMonthly": "Telegram limita cuántas historias puede publicar una cuenta por mes (límite: {{n}}).",
+        "fix": "Espera a que se restablezca el límite o usa una cuenta con Telegram Premium para límites más altos."
+      },
+      "periodInvalid": {
+        "title": "Esa duración de historia no está permitida",
+        "reason": "Solo las cuentas de Telegram Premium pueden elegir una duración distinta de 24 horas.",
+        "fix": "Elige 24 horas o usa una cuenta Premium."
+      },
+      "premiumRequired": {
+        "title": "Se necesita Telegram Premium",
+        "reason": "Esta acción solo está disponible para cuentas de Telegram Premium.",
+        "fix": "Elige otra opción o mejora la cuenta en la app de Telegram."
+      },
+      "boostsRequired": {
+        "title": "Este canal necesita más boosts",
+        "reason": "Un canal debe alcanzar cierto nivel de boosts antes de poder publicar historias.",
+        "fix": "Impulsa el canal en Telegram o publica en otro destino."
+      },
+      "noPermission": {
+        "title": "No puedes publicar aquí",
+        "reason": "Tu cuenta no puede publicar historias en este canal o grupo: falta el permiso de administrador «Publicar historias» o estás restringido.",
+        "fix": "Pide a un propietario que te dé ese permiso o quita este destino."
+      },
+      "targetUnavailable": {
+        "title": "Este canal o grupo no está disponible",
+        "reason": "Telegram no lo encuentra: puede haberse vuelto privado, haberse eliminado o haber salido tú de él.",
+        "fix": "Quita este destino o vuelve a unirte al canal e inténtalo de nuevo."
+      },
+      "storyGone": {
+        "title": "Esta historia ya no existe",
+        "reason": "Se eliminó o caducó y Telegram la retiró.",
+        "fix": "Recarga el historial para ver la lista actual."
+      },
+      "notModified": {
+        "title": "No se cambió nada",
+        "reason": "Telegram recibió el mismo contenido, público y ajustes que la historia ya tiene.",
+        "fix": "Cambia algo primero y luego guarda."
+      },
+      "captionTooLong": {
+        "title": "El pie de foto es demasiado largo",
+        "reason": "El pie supera el límite de tu cuenta.",
+        "fix": "Acórtalo (las cuentas Premium tienen un límite mayor)."
+      },
+      "mediaTooBig": {
+        "title": "El archivo es demasiado grande",
+        "reason": "Telegram rechazó la subida porque el archivo supera el tamaño permitido.",
+        "fix": "Usa un vídeo más corto o ligero, o una foto de menor resolución."
+      },
+      "mediaUnsupported": {
+        "title": "Este archivo no sirve como historia",
+        "reason": "Telegram no acepta el formato o códec de esta foto o vídeo.",
+        "fix": "Usa una foto JPG o PNG, o un vídeo MP4 (H.264)."
+      },
+      "photoInvalid": {
+        "title": "No se pudo procesar la foto",
+        "reason": "Telegram rechazó la foto por su tamaño, dimensiones o codificación.",
+        "fix": "Guárdala de nuevo como JPG, o haz zoom o recórtala en el editor para que se regenere, e inténtalo otra vez."
+      },
+      "audienceInvalid": {
+        "title": "La selección de público no es válida",
+        "reason": "Telegram rechazó la lista de personas que pueden ver la historia o a las que se les oculta: son demasiadas o alguna no es válida.",
+        "fix": "Reduce la selección o elige de nuevo a las personas y reintenta."
+      },
+      "audienceUnresolved": {
+        "title": "No se encontraron algunas personas seleccionadas",
+        "reason": "{{n}} de las personas seleccionadas ya no están en tus contactos, así que no se puede decirle a Telegram quiénes son.",
+        "fix": "Abre el selector de público y elige de nuevo a las personas."
+      },
+      "apiCredentials": {
+        "title": "Se rechazaron las credenciales de API",
+        "reason": "Telegram rechazó este api_id / api_hash: no es válido o demasiadas cuentas usaron el mismo par.",
+        "fix": "Crea tu propio par en my.telegram.org/apps e introdúcelo en Ajustes → Conexión API."
+      },
+      "phoneBanned": {
+        "title": "Este número de teléfono está bloqueado",
+        "reason": "Telegram ha bloqueado el inicio de sesión con este número.",
+        "fix": "Contacta con el soporte de Telegram."
+      },
+      "phoneFlood": {
+        "title": "Demasiados intentos de inicio de sesión",
+        "reason": "Telegram bloqueó temporalmente los intentos de inicio de sesión de este número.",
+        "fix": "Espera unas horas antes de volver a intentarlo."
+      },
+      "floodWait": {
+        "title": "Telegram te pide que vayas más despacio",
+        "reason": "Se enviaron demasiadas solicitudes en poco tiempo.",
+        "fix": "Vuelve a intentarlo cuando termine la espera."
+      },
+      "serverError": {
+        "title": "Telegram tiene un problema temporal",
+        "reason": "Los servidores de Telegram devolvieron un error interno.",
+        "fix": "Espera un momento e inténtalo de nuevo."
+      },
+      "network": {
+        "title": "No se puede conectar con Telegram",
+        "reason": "La conexión de red falló o se interrumpió. Sigues con la sesión iniciada.",
+        "fix": "Revisa tu conexión a internet (y cualquier VPN o proxy) y reintenta."
+      },
+      "connectionTimeout": {
+        "title": "Telegram tardó demasiado en responder",
+        "reason": "No llegó respuesta a tiempo, normalmente por una conexión lenta o bloqueada. Sigues con la sesión iniciada.",
+        "fix": "Revisa tu conexión a internet (y cualquier VPN o proxy) y reintenta."
+      },
+      "sessionBusy": {
+        "title": "Otra ventana está usando tu cuenta",
+        "reason": "Otra ventana de Story Publisher o una publicación programada está usando ahora la conexión con Telegram.",
+        "fix": "Espera unos segundos o cierra la otra ventana y reintenta."
+      },
+      "missingApi": {
+        "title": "Faltan las credenciales de API",
+        "reason": "No hay ningún api_id / api_hash de Telegram configurado.",
+        "fix": "Añade los tuyos en Ajustes → Conexión API (consíguelos en my.telegram.org/apps)."
+      },
+      "unknown": {
+        "title": "Algo salió mal",
+        "reason": "Telegram devolvió un error que esta app aún no reconoce.",
+        "fix": "Inténtalo de nuevo. Si persiste, incluye el código de error de abajo al reportarlo."
+      }
+    }
   },
   "validation": {
     "required": "Este campo es obligatorio.",
     "invalidPhoneNumber": "Ingresa un número de teléfono válido.",
     "invalidCode": "Ingresa un código de inicio de sesión válido.",
-    "captionTooLong": "La descripción es demasiado larga."
+    "captionTooLong": "La descripción es demasiado larga.",
+    "selectedEmpty": "Elige al menos un contacto."
   },
   "toast": {
     "storyPublished": "Historia publicada.",
@@ -196,5 +367,55 @@
     "invalidId": "api_id debe ser solo el número de my.telegram.org/apps.",
     "invalidHash": "api_hash debe ser el código de 32 caracteres de my.telegram.org/apps.",
     "saved": "Credenciales de API actualizadas."
+  },
+  "mediaEditor": {
+    "zoom": "Zoom",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "fit": "Ajustar",
+    "fill": "Rellenar",
+    "rotate": "Girar",
+    "flip": "Voltear",
+    "adjust": "Ajustar color",
+    "reset": "Restablecer",
+    "tools": "Herramientas de foto",
+    "brightness": "Brillo",
+    "contrast": "Contraste",
+    "saturation": "Saturación",
+    "hint": "Arrastra para mover · desplaza o pellizca para hacer zoom · doble clic alterna el zoom",
+    "videoNote": "El zoom, el recorte y los ajustes funcionan en fotos. Los vídeos se publican tal cual."
+  },
+  "audience": {
+    "whoCanSee": "Quién puede ver esta historia",
+    "canTitle": "Pueden verla:",
+    "cantTitle": "No pueden verla:",
+    "canEveryone": "todo el mundo en Telegram.",
+    "canContacts": "todos tus contactos.",
+    "canCloseFriends": "solo tus Mejores amigos.",
+    "canSelected": "solo los contactos que elegiste ({{n}}): {{names}}.",
+    "canSelectedNone": "nadie todavía: elige al menos un contacto.",
+    "cantNobody": "no se excluye a nadie.",
+    "cantNonContacts": "quienes no están en tus contactos.",
+    "cantNonCloseFriends": "quien no sea Mejor amigo.",
+    "cantEveryoneElse": "todos los que no elegiste.",
+    "cantHidden": "las personas a las que se la ocultaste ({{n}}): {{names}}.",
+    "channelAll": "Las historias de canal las ve cualquiera que pueda ver las historias del canal; no hay elección de público.",
+    "unknown": "Telegram no indicó quién puede ver esta historia.",
+    "unknownEdit": "No se pudo leer el público actual, así que se queda como está salvo que elijas uno nuevo.",
+    "andMore": "y {{n}} más",
+    "chooseContacts": "Elegir contactos",
+    "hideFrom": "Ocultar a…",
+    "selectedCount": "{{n}} seleccionados",
+    "searchContacts": "Buscar contactos",
+    "noContacts": "Tu lista de contactos está vacía."
+  },
+  "viewers": {
+    "show": "Quién la vio",
+    "hide": "Ocultar espectadores",
+    "search": "Buscar espectadores",
+    "empty": "Aún no hay espectadores.",
+    "loadMore": "Cargar más",
+    "blocked": "Bloqueado por ti",
+    "hiddenFrom": "Tus historias están ocultas para esta persona"
   }
 }

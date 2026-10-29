@@ -7,6 +7,7 @@ import { HistoryPage } from "./components/history/HistoryPage";
 import { ConnectGate } from "./components/auth/ConnectGate";
 import { SettingsPage } from "./components/SettingsPage";
 import { useTranslation } from "./i18n";
+import { ReconnectScreen } from "./components/auth/ReconnectScreen";
 import { useConnectionStatus } from "./telegram/useConnectionStatus";
 
 function LoadingScreen() {
@@ -20,7 +21,7 @@ function LoadingScreen() {
 
 export default function App() {
   const [page, setPage] = useState<Page>("home");
-  const { connected, checking } = useConnectionStatus();
+  const { connected, checking, offline } = useConnectionStatus();
 
   return (
     <div className="app-shell">
@@ -28,6 +29,8 @@ export default function App() {
 
       {checking ? (
         <LoadingScreen />
+      ) : offline ? (
+        <ReconnectScreen />
       ) : !connected ? (
         <ConnectGate />
       ) : (

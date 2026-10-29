@@ -14,6 +14,14 @@ export interface ScheduledStory {
   fileType: string;
   caption: string;
   privacy: StoryPrivacy;
+  allowUserIds?: string[];
+  blockUserIds?: string[];
+  pinned?: boolean;
+  noforwards?: boolean;
+  /** Real video size/duration, measured when scheduling (the service worker has no <video> to measure with). */
+  video?: { duration: number; width: number; height: number };
+  /** How many times a temporary failure (no network, Telegram unreachable) was already retried automatically. */
+  attempts?: number;
   targets: StoryTarget[];
   period?: StoryPeriodSeconds;
   /** Unix ms — when background.ts should publish this. */

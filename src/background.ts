@@ -12,9 +12,15 @@
 // at all — without it, GramJS mistakes a service worker for Node.js (both
 // lack `window`) and tries to open a raw TCP socket that doesn't exist in
 // this context.
-import { publishStory, isSessionInvalidated, isAuthorized } from "./telegram/client";
+import { publishStory, isSessionInvalidated, checkSession } from "./telegram/client";
 import { getScheduledStory, updateScheduledStory } from "./scheduling/db";
-import { scheduledStoryIdFromAlarm, SCHEDULED_STORY_UPDATED_MESSAGE } from "./scheduling/alarms";
+import {
+  scheduledStoryIdFromAlarm,
+  createStoryAlarm,
+  SCHEDULED_STORY_UPDATED_MESSAGE,
+  MAX_AUTO_RETRIES,
+  AUTO_RETRY_DELAY_MS,
+} from "./scheduling/alarms";
 import { getNotificationStrings } from "./scheduling/notifications-i18n";
 
 async function notify(title: string, message: string) {
@@ -77,7 +83,9 @@ async function runScheduledStory(id: string) {
     await runScheduledStoryInner(id);
   } finally {
     notifyPopup();
-    bumpScheduledBadge();
+    // A story waiting for an automatic retry hasn't finished — no badge yet.
+    const after = await getScheduledStory(id).catch(() => undefined);
+    if (after?.status !== "pending") bumpScheduledBadge();
   }
 }
 
@@ -89,13 +97,25 @@ async function runScheduledStoryInner(id: string) {
   await updateScheduledStory(id, { status: "publishing", lastError: null, failureReason: null });
 
   // Check login state up front rather than only discovering it from a
-  // failed upload — faster, and doesn't burn an upload attempt on a
-  // session that's already known to be gone.
+  // failed upload. IMPORTANT: only an explicit "session is dead" answer from
+  // Telegram counts as logged out. A network/timeout failure here used to be
+  // treated as "not logged in", which marked perfectly valid scheduled
+  // stories as "session expired" whenever the PC woke up before Wi-Fi did.
   let loggedIn: boolean;
   try {
-    loggedIn = await isAuthorized();
-  } catch {
-    loggedIn = false;
+    loggedIn = (await checkSession()) === "authorized";
+  } catch (err) {
+    const attempts = (entry.attempts ?? 0) + 1;
+    if (attempts <= MAX_AUTO_RETRIES) {
+      await updateScheduledStory(id, { status: "pending", attempts, lastError: null, failureReason: null });
+      await createStoryAlarm(id, Date.now() + AUTO_RETRY_DELAY_MS);
+      console.warn("[background] Telegram unreachable, retrying scheduled story in 2 minutes:", err);
+    } else {
+      const message = err instanceof Error ? err.message : strings.failedTitle;
+      await updateScheduledStory(id, { status: "failed", attempts, lastError: message, failureReason: "other" });
+      await notify(strings.failedTitle, message);
+    }
+    return;
   }
   if (!loggedIn) {
     await updateScheduledStory(id, {
@@ -113,6 +133,11 @@ async function runScheduledStoryInner(id: string) {
       file,
       caption: entry.caption || undefined,
       privacy: entry.privacy,
+      allowUserIds: entry.allowUserIds,
+      blockUserIds: entry.blockUserIds,
+      pinned: entry.pinned,
+      noforwards: entry.noforwards,
+      video: entry.video,
       targets: entry.targets,
       period: entry.period,
     });

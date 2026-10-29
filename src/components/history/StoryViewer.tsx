@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { X, ChevronLeft, ChevronRight, Download, AlertCircle, Trash2, Eye, Heart, Radio } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Download, AlertCircle, Trash2, Eye, Heart, Radio, Pencil, Pin, PinOff, Users, ShieldOff } from "lucide-react";
 import { useTranslation, formatDate, formatNumber, useI18n } from "../../i18n";
 import { DirectionalIcon } from "../Icon";
 import { downloadStoryMedia, type MyStoryItem } from "../../telegram/client";
 import { translateTelegramError } from "../../telegram/errors";
+import { AudienceSummary } from "../story/AudiencePicker";
+import { ViewersPanel } from "./ViewersPanel";
 
 interface StoryViewerProps {
   stories: MyStoryItem[];
@@ -11,6 +13,8 @@ interface StoryViewerProps {
   onIndexChange: (index: number) => void;
   onClose: () => void;
   onDelete: (story: MyStoryItem) => Promise<void>;
+  onEdit: (story: MyStoryItem) => void;
+  onTogglePin: (story: MyStoryItem) => Promise<void>;
   deletingKey: string | null;
 }
 
@@ -82,6 +86,8 @@ export function StoryViewer({
   onIndexChange,
   onClose,
   onDelete,
+  onEdit,
+  onTogglePin,
   deletingKey,
 }: StoryViewerProps) {
   const { t } = useTranslation();
@@ -90,6 +96,8 @@ export function StoryViewer({
   const { url, progress, error } = useStoryMedia(story);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [showViewers, setShowViewers] = useState(false);
+  const [pinBusy, setPinBusy] = useState(false);
 
   const hasPrev = index > 0;
   const hasNext = index < stories.length - 1;
@@ -143,6 +151,27 @@ export function StoryViewer({
           )}
         </span>
         <div className="row" style={{ gap: 6 }}>
+          {!story.expired && (
+            <button type="button" className="btn btn-ghost" aria-label={t("history.editStory")} onClick={() => onEdit(story)}>
+              <Pencil size={18} aria-hidden="true" />
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-ghost"
+            aria-label={story.pinned ? t("history.unpin") : t("history.pin")}
+            disabled={pinBusy}
+            onClick={async () => {
+              setPinBusy(true);
+              try {
+                await onTogglePin(story);
+              } finally {
+                setPinBusy(false);
+              }
+            }}
+          >
+            {story.pinned ? <PinOff size={18} aria-hidden="true" /> : <Pin size={18} aria-hidden="true" />}
+          </button>
           <button
             type="button"
             className="btn btn-ghost"
@@ -230,6 +259,27 @@ export function StoryViewer({
             )}
           </span>
         )}
+        <div className="story-viewer-audience">
+          <AudienceSummary
+            config={story.audienceConfig}
+            names={story.userNames}
+            known={story.audienceKnown}
+            isChannelTarget={story.target !== "me"}
+          />
+          {story.noforwards && (
+            <span className="row helper-text" style={{ gap: 6 }}>
+              <ShieldOff size={13} aria-hidden="true" /> {t("story.protectContent")}
+            </span>
+          )}
+          {story.edited && <span className="helper-text">{t("history.edited")}</span>}
+          {story.expired && <span className="helper-text">{t("history.expiredNoEdit")}</span>}
+          {story.target === "me" && (
+            <button type="button" className="btn btn-ghost" style={{ alignSelf: "flex-start", padding: "4px 10px" }} aria-expanded={showViewers} onClick={() => setShowViewers((v) => !v)}>
+              <Users size={14} aria-hidden="true" /> {showViewers ? t("viewers.hide") : t("viewers.show")}
+            </button>
+          )}
+        </div>
+        {showViewers && story.target === "me" && <ViewersPanel key={storyKey(story)} story={story} />}
         {downloadError && (
           <span className="error-text">
             <AlertCircle size={13} /> {downloadError}

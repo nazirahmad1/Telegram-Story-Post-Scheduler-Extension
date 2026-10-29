@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Image, Film, Inbox, Globe2, Users, Star, Trash2, AlertCircle, Eye, Heart, Pin, Filter, CalendarPlus, CheckSquare, Square, X, Radio } from "lucide-react";
+import { Image, Film, Inbox, Globe2, Users, Star, Trash2, Eye, Heart, Pin, Filter, CalendarPlus, CheckSquare, Square, X, Radio, Pencil, UserCheck } from "lucide-react";
 import { useI18n, useTranslation, formatDate, formatNumber, type TranslationKey } from "../../i18n";
 import {
-  getAllMyStories,
+  getAllMyStoriesDetailed,
+  type StoryLoadFailure,
   deleteStory,
   deleteStories,
-  isSessionInvalidated,
+  editStory,
   forgetInvalidSession,
   type StoryPrivacy,
   type MyStoryItem,
 } from "../../telegram/client";
-import { translateTelegramError } from "../../telegram/errors";
+import { describeTelegramError, formatErrorDescription } from "../../telegram/errors";
+import { ErrorPanel } from "../ErrorPanel";
+import { StoryEditor } from "../story/StoryEditor";
 import { useConnectionStatus } from "../../telegram/useConnectionStatus";
 import { Toast } from "../Toast";
 import { StoryViewer } from "./StoryViewer";
@@ -22,6 +25,7 @@ const PRIVACY_META: Record<StoryPrivacy, { key: TranslationKey; icon: typeof Glo
   everyone: { key: "story.privacyEveryone", icon: Globe2 },
   contacts: { key: "story.privacyContacts", icon: Users },
   closeFriends: { key: "story.privacyCloseFriends", icon: Star },
+  selected: { key: "story.privacySelected", icon: UserCheck },
 };
 
 type MediaFilter = "all" | "photo" | "video";
@@ -41,7 +45,9 @@ export function HistoryPage({ onNavigate }: { onNavigate: (page: Page) => void }
   const [scheduleRefreshKey, setScheduleRefreshKey] = useState(0);
   const [stories, setStories] = useState<MyStoryItem[] | null>(null);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReturnType<typeof describeTelegramError> | null>(null);
+  const [editingStory, setEditingStory] = useState<MyStoryItem | null>(null);
+  const [loadFailures, setLoadFailures] = useState<StoryLoadFailure[]>([]);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
@@ -54,12 +60,16 @@ export function HistoryPage({ onNavigate }: { onNavigate: (page: Page) => void }
   const load = useCallback(async () => {
     setError(null);
     try {
-      const result = await getAllMyStories();
+      const { stories: result, failures } = await getAllMyStoriesDetailed();
+      // Nothing loaded AND something failed: show the real reason, not "you have no stories".
+      if (result.length === 0 && failures.length > 0) throw failures[0].error;
       setStories(result);
+      setLoadFailures(failures);
     } catch (err) {
-      setError(translateTelegramError(err, t));
+      const d = describeTelegramError(err, t);
+      setError(d);
       setStories([]);
-      if (isSessionInvalidated(err)) {
+      if (d.sessionDead) {
         await forgetInvalidSession();
         refreshConnection();
       }
@@ -70,6 +80,12 @@ export function HistoryPage({ onNavigate }: { onNavigate: (page: Page) => void }
   useEffect(() => {
     load();
   }, [load]);
+
+  const activeCount = useMemo(() => (stories ?? []).filter((s) => !s.expired).length, [stories]);
+  const failureDescription = useMemo(
+    () => (loadFailures.length > 0 ? describeTelegramError(loadFailures[0].error, t) : null),
+    [loadFailures, t],
+  );
 
   const filteredStories = useMemo(() => {
     if (!stories) return null;
@@ -113,10 +129,10 @@ export function HistoryPage({ onNavigate }: { onNavigate: (page: Page) => void }
       setToast({ message: t("history.bulkDeleted", { count: selected.length }), variant: "success" });
       exitSelectionMode();
     } catch (err) {
-      const message = translateTelegramError(err, t);
-      setError(message);
-      setToast({ message, variant: "error" });
-      if (isSessionInvalidated(err)) {
+      const d = describeTelegramError(err, t);
+      setError(d);
+      setToast({ message: formatErrorDescription(d), variant: "error" });
+      if (d.sessionDead) {
         await forgetInvalidSession();
         refreshConnection();
       }
@@ -134,16 +150,47 @@ export function HistoryPage({ onNavigate }: { onNavigate: (page: Page) => void }
       setViewerIndex(null); // indices shift once the underlying list changes; reopening is one tap away
       setToast({ message: t("history.deleted"), variant: "success" });
     } catch (err) {
-      const message = translateTelegramError(err, t);
-      setError(message);
-      setToast({ message, variant: "error" });
-      if (isSessionInvalidated(err)) {
+      const d = describeTelegramError(err, t);
+      setError(d);
+      setToast({ message: formatErrorDescription(d), variant: "error" });
+      if (d.sessionDead) {
         await forgetInvalidSession();
         refreshConnection();
       }
     } finally {
       setDeletingKey(null);
     }
+  }
+
+  async function handleTogglePin(story: MyStoryItem) {
+    setError(null);
+    try {
+      await editStory({ story, pinned: !story.pinned });
+      setStories((prev) => (prev ? prev.map((s) => (storyKey(s) === storyKey(story) ? { ...s, pinned: !s.pinned } : s)) : prev));
+      setToast({ message: t(story.pinned ? "history.unpinned" : "history.pinnedDone"), variant: "success" });
+    } catch (err) {
+      const d = describeTelegramError(err, t);
+      setError(d);
+      setToast({ message: formatErrorDescription(d), variant: "error" });
+      if (d.sessionDead) {
+        await forgetInvalidSession();
+        refreshConnection();
+      }
+    }
+  }
+
+  if (editingStory) {
+    return (
+      <StoryEditor
+        editing={editingStory}
+        onCancel={() => setEditingStory(null)}
+        onDone={() => {
+          setEditingStory(null);
+          setStories(null);
+          void load();
+        }}
+      />
+    );
   }
 
   return (
@@ -167,6 +214,24 @@ export function HistoryPage({ onNavigate }: { onNavigate: (page: Page) => void }
           </button>
         )}
       </div>
+
+      {tab === "published" && stories && stories.length > 0 && (
+        <span className="helper-text" role="status">
+          {t("history.totalCount", { n: stories.length, active: activeCount, expired: stories.length - activeCount })}
+        </span>
+      )}
+      {tab === "published" && failureDescription && (
+        <div className="stack" style={{ gap: 6 }}>
+          <span className="error-text">
+            {t("history.partialLoad")}
+            {loadFailures[0].targetLabel ? ` (${loadFailures[0].targetLabel})` : ""}
+          </span>
+          <ErrorPanel description={failureDescription} compact />
+          <button type="button" className="btn btn-ghost" style={{ alignSelf: "flex-start" }} onClick={() => void load()}>
+            {t("common.retry")}
+          </button>
+        </div>
+      )}
 
       <div className="chip-group" role="tablist" aria-label={t("history.title")}>
         <button
@@ -208,11 +273,7 @@ export function HistoryPage({ onNavigate }: { onNavigate: (page: Page) => void }
         )
       ) : (
         <>
-          {error && (
-            <span className="error-text">
-              <AlertCircle size={13} /> {error}
-            </span>
-          )}
+          {error && <ErrorPanel description={error} />}
 
           <div className="card">
             <span className="eyebrow">
@@ -371,6 +432,16 @@ export function HistoryPage({ onNavigate }: { onNavigate: (page: Page) => void }
                       )}
                     </span>
                   </div>
+                  {!selectionMode && !story.expired && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      aria-label={t("history.editStory")}
+                      onClick={() => setEditingStory(story)}
+                    >
+                      <Pencil size={16} aria-hidden="true" />
+                    </button>
+                  )}
                   {!selectionMode && (
                     <button
                       type="button"
@@ -421,6 +492,11 @@ export function HistoryPage({ onNavigate }: { onNavigate: (page: Page) => void }
           onIndexChange={setViewerIndex}
           onClose={() => setViewerIndex(null)}
           onDelete={handleDelete}
+          onEdit={(story) => {
+            setViewerIndex(null);
+            setEditingStory(story);
+          }}
+          onTogglePin={handleTogglePin}
           deletingKey={deletingKey}
         />
       )}

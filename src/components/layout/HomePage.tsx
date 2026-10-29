@@ -46,7 +46,7 @@ export function HomePage({ onNavigate }: { onNavigate: (page: Page) => void }) {
           </span>
         </div>
 
-        <div className="card stat-card">
+        <div className="card stat-card" onClick={() => onNavigate("history")}>
           <span className="stat-value">
             {storyCount === null ? "—" : formatNumber(storyCount, language)}
           </span>

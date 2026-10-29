@@ -17,6 +17,7 @@ import {
 } from "../../telegram/client";
 import { addScheduledStory } from "../../scheduling/db";
 import { createStoryAlarm } from "../../scheduling/alarms";
+import { readVideoMeta } from "../../utils/media-meta";
 import { useConnectionStatus } from "../../telegram/useConnectionStatus";
 
 const PRIVACY_OPTIONS: { value: StoryPrivacy; key: TranslationKey; icon: typeof Globe2 }[] = [
@@ -136,12 +137,16 @@ export function ScheduleComposer({ onScheduled }: { onScheduled: () => void }) {
     setErrorMessage(null);
     setBusy(true);
     try {
+      // The service worker that publishes this later has no <video> element to
+      // measure with, so the real duration/size is captured now.
+      const video = file.type.startsWith("video/") ? ((await readVideoMeta(file)) ?? undefined) : undefined;
       const entry = await addScheduledStory({
         file,
         fileName: file.name,
         fileType: file.type,
         caption,
         privacy,
+        video,
         targets: [...selectedTargets],
         period: isPremium ? period : undefined,
         scheduledFor,
