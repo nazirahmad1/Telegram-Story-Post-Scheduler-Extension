@@ -105,13 +105,6 @@ body,
 }
 
 body {
-  /* Chrome sizes an extension POPUP window partly from its own content —
-     a pure `width: 100%` (fine in a normal tab, where the viewport itself
-     already has a size) gives Chrome no concrete anchor to size the
-     popup window against, and it can render collapsed to near nothing.
-     An explicit min-width fixes that; it's a floor, not a fixed size, so
-     the side panel (already normally wider than this) is unaffected. */
-  min-width: 360px;
   margin: 0;
   background: var(--canvas);
   color: var(--ink);
@@ -182,24 +175,19 @@ select {
   gap: var(--space-2);
 }
 
+/* Side panel only (no popup) — fill whatever width the panel has. */
 .app-shell {
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-width: 320px;
-  max-width: 440px;
   height: 100%;
-  min-height: 480px;
-  margin-inline: auto;
   background: var(--canvas);
 }
 
 @media (min-width: 720px) {
-  /* When opened as a resizable side panel (not the fixed-size popup), the
-     shell centers with breathing room instead of stretching edge to edge. */
   .app-shell {
-    max-width: 480px;
-    border-inline: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
   }
 }
 

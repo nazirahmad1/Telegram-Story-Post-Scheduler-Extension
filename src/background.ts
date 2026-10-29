@@ -196,6 +196,12 @@ async function runScheduledStoryInner(id: string) {
   }
 }
 
+// Clicking the toolbar icon opens the side panel (no popup is declared in
+// the manifest, so without this nothing would happen on click).
+chrome.sidePanel
+  .setPanelBehavior({ openPanelOnActionClick: true })
+  .catch((err) => console.error("[background] side panel setup failed:", err));
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   const id = scheduledStoryIdFromAlarm(alarm.name);
   if (!id) return;
