@@ -13,6 +13,7 @@ import {
   getStoryTargets,
   forgetInvalidSession,
   STORY_PERIOD_OPTIONS,
+  UploadCancelledError,
   type MyStoryItem,
   type StoryTarget,
   type StoryTargetOption,
@@ -52,6 +53,8 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
   const { connected, refresh } = useConnectionStatus();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRef = useRef<MediaEditorHandle>(null);
+  /** Signals the in-flight publish to stop — the Cancel button. */
+  const publishSignalRef = useRef<AbortController | null>(null);
   const isEdit = !!editing;
 
   const [file, setFile] = useState<File | null>(null);
@@ -192,12 +195,20 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
     }
 
     setError(null);
+    setPublishFailed(false);
     setStatus("publishing");
     setProgress(0);
+    publishSignalRef.current = new AbortController();
+    const signal = publishSignalRef.current.signal;
     try {
       if (isEdit) await submitEdit();
-      else await submitNew();
+      else await submitNew(signal);
     } catch (err) {
+      // A clean cancel isn't a failure — no error panel, no retry buttons, just drop back to idle.
+      if (err instanceof UploadCancelledError) {
+        setToast({ message: t("story.uploadCancelled"), variant: "success" });
+        return;
+      }
       const d = describeTelegramError(err, t);
       setError(d);
       setPublishFailed(true);
@@ -205,12 +216,17 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
       await handleSessionDead(d);
       void refresh();
     } finally {
+      publishSignalRef.current = null;
       setStatus("idle");
       setProgress(0);
     }
   }
 
-  async function submitNew() {
+  function cancelPublish() {
+    publishSignalRef.current?.abort();
+  }
+
+  async function submitNew(signal?: AbortSignal) {
     const rendered = await mediaRef.current!.render();
     const video = rendered.type.startsWith("video/") ? ((await readVideoMeta(rendered)) ?? undefined) : undefined;
     const results = await publishStory({
@@ -225,6 +241,7 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
       targets: [...selectedTargets],
       period: isPremium ? period : undefined,
       onProgress: setProgress,
+      signal,
     });
     const failed = results.filter((r) => r.error);
     const succeeded = results.filter((r) => !r.error);
@@ -513,14 +530,19 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
       )}
 
       {status === "publishing" && (
-        <div className="upload-progress" role="status" aria-live="polite">
-          <div className="upload-progress-label">
-            <span>{t("story.uploading")}</span>
-            <span>{Math.round(progress * 100)}%</span>
+        <div className="stack" style={{ gap: 8 }}>
+          <div className="upload-progress" role="status" aria-live="polite">
+            <div className="upload-progress-label">
+              <span>{t("story.uploading")}</span>
+              <span>{Math.round(progress * 100)}%</span>
+            </div>
+            <div className="upload-progress-track">
+              <div className="upload-progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
+            </div>
           </div>
-          <div className="upload-progress-track">
-            <div className="upload-progress-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
-          </div>
+          <button type="button" className="btn btn-ghost btn-block" onClick={cancelPublish}>
+            {t("common.cancel")}
+          </button>
         </div>
       )}
 

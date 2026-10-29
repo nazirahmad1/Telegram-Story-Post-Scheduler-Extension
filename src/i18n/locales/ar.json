@@ -68,6 +68,7 @@
     "publishSuccess": "تم نشر قصتك.",
     "removeMedia": "إزالة الملف",
     "uploading": "جاري الرفع…",
+    "uploadCancelled": "تم إلغاء الرفع",
     "postTo": "النشر في",
     "myStory": "قصتي",
     "noChannels": "لم يتم العثور على قنوات أو مجموعات يمكنك نشر القصص فيها.",

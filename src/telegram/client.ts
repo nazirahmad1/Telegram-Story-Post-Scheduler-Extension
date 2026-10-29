@@ -539,6 +539,16 @@ export interface PublishStoryParams {
   period?: StoryPeriodSeconds;
   /** Fraction from 0 to 1. Called repeatedly during upload; the publish RPC calls that follow have no granular signal of their own. */
   onProgress?: (fraction: number) => void;
+  /** Aborts the upload (and skips any pending SendStory calls) — the UI's Cancel button. */
+  signal?: AbortSignal;
+}
+
+/** Thrown when a publish was cancelled through the signal — not an error to show as a failure. */
+export class UploadCancelledError extends Error {
+  constructor() {
+    super("Story upload was cancelled.");
+    this.name = "UploadCancelledError";
+  }
 }
 
 export interface PublishStoryResult {
@@ -597,49 +607,91 @@ export async function publishStory({
   targets = ["me"],
   period,
   onProgress,
+  signal,
 }: PublishStoryParams): Promise<PublishStoryResult[]> {
   return runOp(async () => {
-    const client = await getClient();
-    const audience: StoryAudienceConfig = { audience: privacy, allowUserIds, blockUserIds };
-
-    // Resolve the audience BEFORE spending minutes uploading a big video:
-    // a stale "selected contact" should fail in a second, not after 100%.
-    const rulesByTarget = new Map<StoryTarget, Api.TypeInputPrivacyRule[]>();
-    for (const target of targets) rulesByTarget.set(target, await privacyRulesFor(audience, target));
-
-    // uploadFile's progress only covers the raw bytes going up (0..1); the
-    // SendStory RPC calls that follow have no granular signal of their own,
-    // so that leg is reported as a fixed 95% while in flight per target.
-    const uploadedFile = await client.uploadFile({
-      file,
-      workers: 1,
-      onProgress: onProgress ? (fraction) => onProgress(Math.min(fraction, 1) * 0.95) : undefined,
+    if (signal?.aborted) throw new UploadCancelledError();
+    // Rejects the moment the signal aborts, so awaiting code stops immediately
+    // even if the underlying RPC stays pending (GramJS has no abort itself).
+    // Once the race below has resolved, late aborts don't reject `aborted`
+    // anymore — a rejected promise nobody awaits would be an unhandled error.
+    let rejectAborted: (err: unknown) => void = () => {};
+    const aborted = new Promise<never>((_, reject) => {
+      rejectAborted = reject;
     });
+    let raceSettled = false;
+    signal?.addEventListener(
+      "abort",
+      () => {
+        if (!raceSettled) rejectAborted(new UploadCancelledError());
+      },
+      { once: true },
+    );
 
-    const results: PublishStoryResult[] = [];
-    for (const target of targets) {
-      try {
-        const result = await client.invoke(
-          new Api.stories.SendStory({
-            peer: target,
-            // A fresh InputMedia wrapper per call; the uploaded bytes on Telegram's side are what's reused.
-            media: buildInputMedia(file, uploadedFile, video),
-            privacyRules: rulesByTarget.get(target)!,
-            caption,
-            period,
-            pinned: pinned || undefined,
-            noforwards: noforwards || undefined,
-            randomId: generateRandomLong(),
-          }),
-        );
-        results.push({ target, storyId: extractStoryId(result), error: null });
-      } catch (error) {
-        results.push({ target, storyId: null, error });
+    try {
+      const client = await getClient();
+      const audience: StoryAudienceConfig = { audience: privacy, allowUserIds, blockUserIds };
+
+      // Resolve the audience BEFORE spending minutes uploading a big video:
+      // a stale "selected contact" should fail in a second, not after 100%.
+      const rulesByTarget = new Map<StoryTarget, Api.TypeInputPrivacyRule[]>();
+      for (const target of targets) {
+        if (signal?.aborted) throw new UploadCancelledError();
+        rulesByTarget.set(target, await privacyRulesFor(audience, target));
       }
-    }
 
-    onProgress?.(1);
-    return results;
+      // uploadFile's progress only covers the raw bytes going up (0..1); the
+      // SendStory RPC calls that follow have no granular signal of their own,
+      // so that leg is reported as a fixed 95% while in flight per target.
+      let uploadedFile: Awaited<ReturnType<TelegramClient["uploadFile"]>>;
+      try {
+        const upload = client.uploadFile({
+          file,
+          workers: 1,
+          onProgress: onProgress ? (fraction) => onProgress(Math.min(fraction, 1) * 0.95) : undefined,
+        });
+        // If cancellation wins the race before the real upload finishes (or the
+        // dropped socket makes it reject later), nobody is awaiting it anymore —
+        // swallow that late rejection so it doesn't surface as unhandled.
+        void upload.catch(() => {});
+        uploadedFile = await Promise.race([upload, aborted]).finally(() => {
+          raceSettled = true;
+        });
+      } catch (err) {
+        // GramJS has no per-request abort: kill the connection for real so the
+        // half-transferred bytes stop flowing. The next call reconnects fresh.
+        await disconnectNow();
+        throw err;
+      }
+
+      const results: PublishStoryResult[] = [];
+      for (const target of targets) {
+        if (signal?.aborted) throw new UploadCancelledError();
+        try {
+          const result = await client.invoke(
+            new Api.stories.SendStory({
+              peer: target,
+              // A fresh InputMedia wrapper per call; the uploaded bytes on Telegram's side are what's reused.
+              media: buildInputMedia(file, uploadedFile, video),
+              privacyRules: rulesByTarget.get(target)!,
+              caption,
+              period,
+              pinned: pinned || undefined,
+              noforwards: noforwards || undefined,
+              randomId: generateRandomLong(),
+            }),
+          );
+          results.push({ target, storyId: extractStoryId(result), error: null });
+        } catch (error) {
+          results.push({ target, storyId: null, error });
+        }
+      }
+
+      onProgress?.(1);
+      return results;
+    } finally {
+      raceSettled = true;
+    }
   });
 }
 
