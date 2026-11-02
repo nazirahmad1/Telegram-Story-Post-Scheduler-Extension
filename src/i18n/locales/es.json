@@ -306,6 +306,26 @@
         "title": "Algo salió mal",
         "reason": "Telegram devolvió un error que esta app aún no reconoce.",
         "fix": "Inténtalo de nuevo. Si persiste, incluye el código de error de abajo al reportarlo."
+      },
+      "videoFormat": {
+        "title": "Este formato de vídeo no es compatible",
+        "reason": "Las historias de Telegram solo aceptan vídeo MP4 (H.264 con audio AAC).",
+        "fix": "Convierte el vídeo a MP4 y vuelve a intentarlo."
+      },
+      "videoMetadata": {
+        "title": "No se pudo leer este vídeo",
+        "reason": "El navegador no pudo leer la duración y las dimensiones del vídeo, y Telegram rechaza los vídeos sin esos datos.",
+        "fix": "Prueba con un MP4 estándar (H.264) o convierte el vídeo primero."
+      },
+      "videoTooLong": {
+        "title": "Este vídeo es demasiado largo",
+        "reason": "Los vídeos de historias pueden durar como máximo 60 segundos (este dura {{seconds}} segundos).",
+        "fix": "Usa los controles de recorte para seleccionar 60 segundos o menos y vuelve a intentarlo."
+      },
+      "videoEditUnavailable": {
+        "title": "Este navegador no puede exportar vídeo editado",
+        "reason": "Editar vídeo requiere el grabador MP4 del navegador, que no está disponible aquí.",
+        "fix": "Publica el MP4 original sin recortar o usa una versión reciente de Chrome."
       }
     }
   },
@@ -379,12 +399,21 @@
     "flip": "Voltear",
     "adjust": "Ajustar color",
     "reset": "Restablecer",
-    "tools": "Herramientas de foto",
+    "tools": "Herramientas de edición",
     "brightness": "Brillo",
     "contrast": "Contraste",
     "saturation": "Saturación",
     "hint": "Arrastra para mover · desplaza o pellizca para hacer zoom · doble clic alterna el zoom",
-    "videoNote": "El zoom, el recorte y los ajustes funcionan en fotos. Los vídeos se publican tal cual."
+    "videoNote": "Arrastra para mover · desplázate o pellizca para ampliar · el recorte, giro y ajustes se aplican al publicar.",
+    "play": "Reproducir",
+    "pause": "Pausar",
+    "mute": "Silenciar",
+    "unmute": "Activar sonido",
+    "trim": "Recortar",
+    "trimStart": "Inicio",
+    "trimEnd": "Fin",
+    "clipLength": "Seleccionado: {{seconds}} s (máx. 60 s)",
+    "videoExportUnsupported": "Este navegador no puede exportar vídeo editado. Aún puedes publicar el MP4 original sin recortar."
   },
   "audience": {
     "whoCanSee": "Quién puede ver esta historia",
