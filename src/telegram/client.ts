@@ -566,15 +566,20 @@ function extractStoryId(updates: Api.TypeUpdates): number | null {
 }
 
 function buildInputMedia(file: File, uploaded: Awaited<ReturnType<TelegramClient["uploadFile"]>>, video?: VideoMeta) {
-  if (file.type.startsWith("video/")) {
+  if (file.type.startsWith("video/") || file.name.match(/\.(mp4|m4v)$/i)) {
+    // Telegram stories require MP4 with real metadata — zeros cause MEDIA_FILE_INVALID
+    if (!video || !video.duration || !video.width || !video.height) {
+      throw new Error("Video metadata missing (duration/width/height). The file may be corrupt or the browser couldn't read it.");
+    }
     return new Api.InputMediaUploadedDocument({
       file: uploaded,
-      mimeType: file.type || "video/mp4",
+      mimeType: "video/mp4",
       attributes: [
+        new Api.DocumentAttributeFilename({ fileName: file.name.endsWith(".mp4") ? file.name : file.name.replace(/\.[^.]+$/, "") + ".mp4" }),
         new Api.DocumentAttributeVideo({
-          duration: video?.duration ?? 0,
-          w: video?.width ?? 0,
-          h: video?.height ?? 0,
+          duration: video.duration,
+          w: video.width,
+          h: video.height,
           supportsStreaming: true,
         }),
       ],
