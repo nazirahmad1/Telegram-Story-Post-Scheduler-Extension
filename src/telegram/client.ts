@@ -6,6 +6,8 @@ import { Raw } from "telegram/events";
 
 import { getEffectiveApiCredentials } from "./config";
 import { clearPersistedSession, getPersistedSession, persistSession } from "./session-storage";
+import { isMp4Video, mediaKind, mp4FileName } from "../utils/media-file";
+import { MAX_STORY_VIDEO_SECONDS } from "../utils/video-transform";
 import {
   AudienceUnresolvedError,
   buildPrivacyRules,
@@ -517,6 +519,43 @@ export interface VideoMeta {
   duration: number;
   width: number;
   height: number;
+  /** False only when the browser explicitly says the file has no audio track. */
+  hasAudio?: boolean;
+}
+
+/** A story video must be an MP4/M4V container — Telegram rejects the rest. */
+export class VideoFormatUnsupportedError extends Error {
+  constructor() {
+    super("Telegram stories only accept MP4 (H.264/AAC) videos.");
+    this.name = "VideoFormatUnsupportedError";
+  }
+}
+
+/** The browser couldn't read the video's duration/dimensions, and Telegram rejects media without them. */
+export class VideoMetadataError extends Error {
+  constructor() {
+    super("Couldn't read this video's duration and dimensions.");
+    this.name = "VideoMetadataError";
+  }
+}
+
+/** Telegram stories are limited to 60 seconds. */
+export class VideoTooLongError extends Error {
+  duration: number;
+  constructor(duration: number) {
+    super(`Story videos can be at most ${MAX_STORY_VIDEO_SECONDS} seconds (this one is ${Math.ceil(duration)}s).`);
+    this.name = "VideoTooLongError";
+    this.duration = duration;
+  }
+}
+
+/** Validates a video before any bytes are uploaded, so failures are fast and explainable. */
+export function assertStoryVideo(file: File, video?: VideoMeta): asserts video is VideoMeta {
+  if (!isMp4Video(file)) throw new VideoFormatUnsupportedError();
+  if (!video || !Number.isFinite(video.duration) || video.duration <= 0 || video.width <= 0 || video.height <= 0) {
+    throw new VideoMetadataError();
+  }
+  if (video.duration > MAX_STORY_VIDEO_SECONDS + 0.75) throw new VideoTooLongError(video.duration);
 }
 
 export interface PublishStoryParams {
@@ -566,17 +605,24 @@ function extractStoryId(updates: Api.TypeUpdates): number | null {
 }
 
 function buildInputMedia(file: File, uploaded: Awaited<ReturnType<TelegramClient["uploadFile"]>>, video?: VideoMeta) {
-  if (file.type.startsWith("video/")) {
+  if (mediaKind(file) === "video") {
+    // Telegram's stories.sendStory returns MEDIA_FILE_INVALID / VIDEO_DURATION_INVALID
+    // when a document arrives with a non-MP4 MIME type or zeroed video
+    // attributes. Both used to be possible here when the browser reported an
+    // empty MIME type or couldn't measure the file, so validate explicitly.
+    assertStoryVideo(file, video);
     return new Api.InputMediaUploadedDocument({
       file: uploaded,
-      mimeType: file.type || "video/mp4",
+      mimeType: "video/mp4",
       attributes: [
         new Api.DocumentAttributeVideo({
-          duration: video?.duration ?? 0,
-          w: video?.width ?? 0,
-          h: video?.height ?? 0,
+          duration: video.duration,
+          w: video.width,
+          h: video.height,
           supportsStreaming: true,
+          nosound: video.hasAudio === false ? true : undefined,
         }),
+        new Api.DocumentAttributeFilename({ fileName: mp4FileName(file.name) }),
       ],
     });
   }
@@ -611,6 +657,9 @@ export async function publishStory({
 }: PublishStoryParams): Promise<PublishStoryResult[]> {
   return runOp(async () => {
     if (signal?.aborted) throw new UploadCancelledError();
+    // Fail before uploading anything if the browser couldn't measure the
+    // video or the container isn't MP4.
+    if (mediaKind(file) === "video") assertStoryVideo(file, video);
     // Rejects the moment the signal aborts, so awaiting code stops immediately
     // even if the underlying RPC stays pending (GramJS has no abort itself).
     // Once the race below has resolved, late aborts don't reject `aborted`
@@ -726,6 +775,7 @@ export async function editStory(params: EditStoryParams): Promise<void> {
       const privacyRules = audience ? await privacyRulesFor(audience, peer) : undefined;
       let media: Api.TypeInputMedia | undefined;
       if (file) {
+        if (mediaKind(file) === "video") assertStoryVideo(file, video);
         const uploaded = await client.uploadFile({
           file,
           workers: 1,

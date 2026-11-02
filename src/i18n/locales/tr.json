@@ -305,6 +305,26 @@
         "title": "Bir şeyler ters gitti",
         "reason": "Telegram, bu uygulamanın henüz tanımadığı bir hata döndürdü.",
         "fix": "Tekrar deneyin. Devam ederse bildirirken aşağıdaki hata kodunu da ekleyin."
+      },
+      "videoFormat": {
+        "title": "Bu video biçimi desteklenmiyor",
+        "reason": "Telegram hikâyeleri yalnızca MP4 video kabul eder (AAC sesli H.264 video).",
+        "fix": "Videoyu MP4'e dönüştürüp tekrar deneyin."
+      },
+      "videoMetadata": {
+        "title": "Bu video okunamadı",
+        "reason": "Tarayıcı videonun süresini ve boyutlarını okuyamadı; Telegram bu bilgiler olmadan videoları reddediyor.",
+        "fix": "Standart bir MP4 (H.264) dosyası deneyin veya videoyu önce dönüştürün."
+      },
+      "videoTooLong": {
+        "title": "Bu video çok uzun",
+        "reason": "Hikâye videoları en fazla 60 saniye olabilir (bu video {{seconds}} saniye).",
+        "fix": "Kırpma araçlarıyla 60 saniye veya daha azını seçip tekrar deneyin."
+      },
+      "videoEditUnavailable": {
+        "title": "Bu tarayıcı düzenlenmiş video dışa aktaramıyor",
+        "reason": "Videoyu düzenlemek tarayıcının MP4 kaydedicisini gerektirir ve burada kullanılamıyor.",
+        "fix": "Orijinal MP4'ü kırpmadan paylaşın veya güncel bir Chrome sürümü kullanın."
       }
     }
   },
@@ -378,12 +398,21 @@
     "flip": "Çevir",
     "adjust": "Ayarla",
     "reset": "Sıfırla",
-    "tools": "Fotoğraf araçları",
+    "tools": "Düzenleme araçları",
     "brightness": "Parlaklık",
     "contrast": "Kontrast",
     "saturation": "Doygunluk",
     "hint": "Taşımak için sürükleyin · yakınlaştırmak için kaydırın veya çimdikleyin · yakınlaştırmayı değiştirmek için çift tıklayın",
-    "videoNote": "Yakınlaştırma, kırpma ve ayarlar fotoğraflarda çalışır. Videolar olduğu gibi paylaşılır."
+    "videoNote": "Taşımak için sürükleyin · yakınlaştırmak için kaydırın veya iki parmak kullanın · kırpma, döndürme ve ayarlar yayınlarken uygulanır.",
+    "play": "Oynat",
+    "pause": "Duraklat",
+    "mute": "Sessize al",
+    "unmute": "Sesi aç",
+    "trim": "Kırp",
+    "trimStart": "Başlangıç",
+    "trimEnd": "Bitiş",
+    "clipLength": "Seçilen: {{seconds}} sn (en fazla 60 sn)",
+    "videoExportUnsupported": "Bu tarayıcı düzenlenmiş video dışa aktaramıyor. Orijinal MP4'ü kırpmadan paylaşabilirsiniz."
   },
   "audience": {
     "whoCanSee": "Bu hikâyeyi kimler görebilir",

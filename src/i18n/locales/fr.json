@@ -306,6 +306,26 @@
         "title": "Une erreur est survenue",
         "reason": "Telegram a renvoyé une erreur que cette application ne reconnaît pas encore.",
         "fix": "Réessayez. Si cela continue, joignez le code d'erreur ci-dessous à votre signalement."
+      },
+      "videoFormat": {
+        "title": "Ce format de vidéo n'est pas pris en charge",
+        "reason": "Les stories Telegram n'acceptent que la vidéo MP4 (H.264 avec audio AAC).",
+        "fix": "Convertissez la vidéo en MP4, puis réessayez."
+      },
+      "videoMetadata": {
+        "title": "Impossible de lire cette vidéo",
+        "reason": "Le navigateur n'a pas pu lire la durée et les dimensions de la vidéo, et Telegram refuse les vidéos sans ces informations.",
+        "fix": "Essayez un MP4 standard (H.264) ou convertissez d'abord la vidéo."
+      },
+      "videoTooLong": {
+        "title": "Cette vidéo est trop longue",
+        "reason": "Les vidéos de story peuvent durer 60 secondes au maximum (celle-ci dure {{seconds}} secondes).",
+        "fix": "Utilisez les contrôles de découpe pour choisir 60 secondes ou moins, puis réessayez."
+      },
+      "videoEditUnavailable": {
+        "title": "Ce navigateur ne peut pas exporter de vidéo modifiée",
+        "reason": "La modification vidéo nécessite l'enregistreur MP4 du navigateur, indisponible ici.",
+        "fix": "Publiez le MP4 d'origine sans découpe, ou utilisez une version récente de Chrome."
       }
     }
   },
@@ -379,12 +399,21 @@
     "flip": "Retourner",
     "adjust": "Régler",
     "reset": "Réinitialiser",
-    "tools": "Outils photo",
+    "tools": "Outils d'édition",
     "brightness": "Luminosité",
     "contrast": "Contraste",
     "saturation": "Saturation",
     "hint": "Glissez pour déplacer · faites défiler ou pincez pour zoomer · double-clic pour basculer le zoom",
-    "videoNote": "Le zoom, le recadrage et les réglages fonctionnent sur les photos. Les vidéos sont publiées telles quelles."
+    "videoNote": "Faites glisser pour déplacer · molette ou pincement pour zoomer · la découpe, la rotation et les réglages sont appliqués à la publication.",
+    "play": "Lire",
+    "pause": "Pause",
+    "mute": "Couper le son",
+    "unmute": "Activer le son",
+    "trim": "Découper",
+    "trimStart": "Début",
+    "trimEnd": "Fin",
+    "clipLength": "Sélection : {{seconds}} s (max 60 s)",
+    "videoExportUnsupported": "Ce navigateur ne peut pas exporter de vidéo modifiée. Vous pouvez publier le MP4 d'origine sans découpe."
   },
   "audience": {
     "whoCanSee": "Qui peut voir cette story",

@@ -1,5 +1,13 @@
 import type { TranslationKey } from "../i18n";
-import { FloodWaitError, RPCError, ConnectionTimeoutError } from "./client";
+import {
+  FloodWaitError,
+  RPCError,
+  ConnectionTimeoutError,
+  VideoFormatUnsupportedError,
+  VideoMetadataError,
+  VideoTooLongError,
+} from "./client";
+import { VideoClipTooLongError, VideoExportUnsupportedError } from "../utils/video-transform";
 import { MissingApiCredentialsError } from "./config";
 import { AudienceUnresolvedError } from "./privacy";
 import { SessionBusyError } from "./session-lock";
@@ -83,6 +91,31 @@ export function describeTelegramError(err: unknown, t: TFunction): ErrorDescript
       sessionDead: false,
       retryable: false,
     };
+  }
+  if (err instanceof VideoFormatUnsupportedError) {
+    return { id: "videoFormat", ...entry("videoFormat", t), sessionDead: false, retryable: false };
+  }
+  if (err instanceof VideoMetadataError) {
+    return { id: "videoMetadata", ...entry("videoMetadata", t), sessionDead: false, retryable: false };
+  }
+  if (err instanceof VideoTooLongError) {
+    return {
+      id: "videoTooLong",
+      ...entry("videoTooLong", t, { seconds: Math.ceil(err.duration) }),
+      sessionDead: false,
+      retryable: false,
+    };
+  }
+  if (err instanceof VideoClipTooLongError) {
+    return {
+      id: "videoTooLong",
+      ...entry("videoTooLong", t, { seconds: Math.ceil(err.duration) }),
+      sessionDead: false,
+      retryable: false,
+    };
+  }
+  if (err instanceof VideoExportUnsupportedError) {
+    return { id: "videoEditUnavailable", ...entry("videoEditUnavailable", t), sessionDead: false, retryable: false };
   }
 
   if (err instanceof RPCError) {

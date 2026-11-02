@@ -9,15 +9,19 @@ import {
   getStoryTargets,
   isSessionInvalidated,
   forgetInvalidSession,
+  assertStoryVideo,
   STORY_PERIOD_OPTIONS,
   type StoryPrivacy,
   type StoryTarget,
   type StoryTargetOption,
   type StoryPeriodSeconds,
+  type VideoMeta,
 } from "../../telegram/client";
 import { addScheduledStory } from "../../scheduling/db";
 import { createStoryAlarm } from "../../scheduling/alarms";
 import { readVideoMeta } from "../../utils/media-meta";
+import { mediaKind, normalizeMediaFile } from "../../utils/media-file";
+import { translateTelegramError } from "../../telegram/errors";
 import { useConnectionStatus } from "../../telegram/useConnectionStatus";
 
 const PRIVACY_OPTIONS: { value: StoryPrivacy; key: TranslationKey; icon: typeof Globe2 }[] = [
@@ -28,7 +32,6 @@ const PRIVACY_OPTIONS: { value: StoryPrivacy; key: TranslationKey; icon: typeof 
 
 const FALLBACK_CAPTION_MAX = 200;
 const DEFAULT_PERIOD: StoryPeriodSeconds = 24 * 3600;
-const ACCEPTED_TYPES = /^(image|video)\//;
 const ME_TARGET: StoryTargetOption = { id: "me", title: "", kind: "channel", username: null };
 
 /** Minimum lead time chrome.alarms reliably honors for a one-off alarm. */
@@ -109,12 +112,13 @@ export function ScheduleComposer({ onScheduled }: { onScheduled: () => void }) {
 
   function acceptFile(candidate: File | null) {
     if (!candidate) return;
-    if (!ACCEPTED_TYPES.test(candidate.type)) {
+    const normalized = normalizeMediaFile(candidate);
+    if (!mediaKind(normalized)) {
       setErrorMessage(t("errors.unsupportedFormat"));
       return;
     }
     setErrorMessage(null);
-    setFile(candidate);
+    setFile(normalized);
   }
 
   function handleDrop(e: DragEvent<HTMLDivElement>) {
@@ -138,8 +142,14 @@ export function ScheduleComposer({ onScheduled }: { onScheduled: () => void }) {
     setBusy(true);
     try {
       // The service worker that publishes this later has no <video> element to
-      // measure with, so the real duration/size is captured now.
-      const video = file.type.startsWith("video/") ? ((await readVideoMeta(file)) ?? undefined) : undefined;
+      // measure with, so the real duration/size is captured now. The same
+      // validation the composer uses runs here, before anything is stored.
+      let video: VideoMeta | undefined;
+      if (mediaKind(file) === "video") {
+        const meta = await readVideoMeta(file);
+        assertStoryVideo(file, meta ?? undefined);
+        video = meta!;
+      }
       const entry = await addScheduledStory({
         file,
         fileName: file.name,
@@ -167,7 +177,7 @@ export function ScheduleComposer({ onScheduled }: { onScheduled: () => void }) {
       if (typeof chrome === "undefined" || !chrome.alarms) {
         setErrorMessage(t("schedule.needsExtensionContext"));
       } else {
-        setErrorMessage(t("errors.unknown"));
+        setErrorMessage(translateTelegramError(err, t));
       }
     } finally {
       setBusy(false);

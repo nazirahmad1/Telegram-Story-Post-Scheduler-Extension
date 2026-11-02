@@ -12,22 +12,25 @@ import {
   getAccountCapabilities,
   getStoryTargets,
   forgetInvalidSession,
+  assertStoryVideo,
   STORY_PERIOD_OPTIONS,
   UploadCancelledError,
   type MyStoryItem,
   type StoryTarget,
   type StoryTargetOption,
   type StoryPeriodSeconds,
+  type VideoMeta,
 } from "../../telegram/client";
 import { describeTelegramError, type ErrorDescription } from "../../telegram/errors";
 import { DEFAULT_AUDIENCE, validateAudience, type StoryAudienceConfig } from "../../telegram/privacy";
 import { useConnectionStatus } from "../../telegram/useConnectionStatus";
 import { readVideoMeta } from "../../utils/media-meta";
+import { mediaKind, normalizeMediaFile } from "../../utils/media-file";
+import { VideoEditCancelledError } from "../../utils/video-transform";
 import type { Page } from "../layout/BottomTabBar";
 
 const FALLBACK_CAPTION_MAX = 200;
 const DEFAULT_PERIOD: StoryPeriodSeconds = 24 * 3600;
-const ACCEPTED_TYPES = /^(image|video)\//;
 const ME_TARGET: StoryTargetOption = { id: "me", title: "", kind: "channel", username: null };
 
 interface TargetFailure {
@@ -161,12 +164,14 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
 
   function acceptFile(candidate: File | null) {
     if (!candidate) return;
-    if (!ACCEPTED_TYPES.test(candidate.type)) {
+    const normalized = normalizeMediaFile(candidate);
+    const kind = mediaKind(normalized);
+    if (!kind) {
       setError(simpleError("errors.unsupportedFormat", "errors.detail.mediaUnsupported.fix"));
       return;
     }
     setError(null);
-    setFile(candidate);
+    setFile(normalized);
     setMediaReplaced(true);
   }
 
@@ -205,7 +210,7 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
       else await submitNew(signal);
     } catch (err) {
       // A clean cancel isn't a failure — no error panel, no retry buttons, just drop back to idle.
-      if (err instanceof UploadCancelledError) {
+      if (err instanceof UploadCancelledError || err instanceof VideoEditCancelledError) {
         setToast({ message: t("story.uploadCancelled"), variant: "success" });
         return;
       }
@@ -227,8 +232,15 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
   }
 
   async function submitNew(signal?: AbortSignal) {
-    const rendered = await mediaRef.current!.render();
-    const video = rendered.type.startsWith("video/") ? ((await readVideoMeta(rendered)) ?? undefined) : undefined;
+    // Rendering an edited video can take as long as the clip itself, so show
+    // that leg on the same progress bar before the upload starts.
+    const rendered = await mediaRef.current!.render({ signal, onProgress: setProgress });
+    let video: VideoMeta | undefined;
+    if (mediaKind(rendered) === "video") {
+      const meta = await readVideoMeta(rendered);
+      assertStoryVideo(rendered, meta ?? undefined);
+      video = meta!;
+    }
     const results = await publishStory({
       file: rendered,
       caption: caption || undefined,
@@ -284,8 +296,13 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
       return;
     }
 
-    const rendered = mediaChanged ? await mediaRef.current!.render() : undefined;
-    const video = rendered?.type.startsWith("video/") ? ((await readVideoMeta(rendered)) ?? undefined) : undefined;
+    const rendered = mediaChanged ? await mediaRef.current!.render({ onProgress: setProgress }) : undefined;
+    let video: VideoMeta | undefined;
+    if (rendered && mediaKind(rendered) === "video") {
+      const meta = await readVideoMeta(rendered);
+      assertStoryVideo(rendered, meta ?? undefined);
+      video = meta!;
+    }
     await editStory({
       story,
       file: rendered,
@@ -423,6 +440,7 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
           onChange={(e) => setCaption(e.target.value)}
           aria-invalid={captionTooLong}
           aria-label={t("story.caption")}
+          style={{ unicodeBidi: "plaintext" }}
         />
         {captionTooLong && (
           <span className="error-text">

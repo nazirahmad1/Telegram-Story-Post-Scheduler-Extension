@@ -8,7 +8,9 @@ Built with **Manifest V3, Vite, React 19, and TypeScript**, the extension includ
 
 ## Features
 
-- **Create and publish Stories** with media uploads, captions, and privacy options.
+- **Create and publish Stories** with photo or video uploads, captions, and privacy options.
+- **Edit media before publishing** — crop/zoom from either side, pan, rotate, flip, trim videos to Telegram's 60-second story limit, and adjust brightness, contrast, and saturation.
+- **Video story support** with automatic MP4 validation and a clear error when a non-MP4 file needs conversion.
 - **Schedule Stories** for later publication using a background service worker and `chrome.alarms`.
 - **Publish to multiple targets** where the connected account has the required story-posting rights.
 - **Manage Stories** with history, media-type and date filters, and deletion controls.

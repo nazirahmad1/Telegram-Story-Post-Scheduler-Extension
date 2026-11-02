@@ -305,6 +305,26 @@
         "title": "Something went wrong",
         "reason": "Telegram returned an error this app doesn't recognize yet.",
         "fix": "Try again. If it keeps happening, include the error code below when you report it."
+      },
+      "videoFormat": {
+        "title": "This video format isn't supported",
+        "reason": "Telegram stories only accept MP4 video (H.264 video with AAC audio).",
+        "fix": "Convert the video to MP4 and try again."
+      },
+      "videoMetadata": {
+        "title": "Couldn't read this video",
+        "reason": "The browser couldn't read the video's duration and dimensions, and Telegram rejects videos without them.",
+        "fix": "Try a standard MP4 (H.264) file, or convert the video first."
+      },
+      "videoTooLong": {
+        "title": "This video is too long",
+        "reason": "Story videos can be at most 60 seconds (this one is {{seconds}} seconds).",
+        "fix": "Use the Trim controls to select 60 seconds or less, then try again."
+      },
+      "videoEditUnavailable": {
+        "title": "This browser can't export edited video",
+        "reason": "Editing a video requires the browser's MP4 recorder, which isn't available here.",
+        "fix": "Post the original MP4 without cropping or trimming, or use a recent Chrome version."
       }
     }
   },
@@ -378,12 +398,21 @@
     "flip": "Flip",
     "adjust": "Adjust",
     "reset": "Reset",
-    "tools": "Photo tools",
+    "tools": "Editing tools",
     "brightness": "Brightness",
     "contrast": "Contrast",
     "saturation": "Saturation",
     "hint": "Drag to move · scroll or pinch to zoom · double-click to toggle zoom",
-    "videoNote": "Zoom, crop and adjust work on photos. Videos are posted as they are."
+    "videoNote": "Drag to move · scroll or pinch to zoom · trim, crop, rotate and adjust are applied when you publish.",
+    "play": "Play",
+    "pause": "Pause",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "trim": "Trim",
+    "trimStart": "Start",
+    "trimEnd": "End",
+    "clipLength": "Selected: {{seconds}}s (max 60s)",
+    "videoExportUnsupported": "This browser can't export edited video. You can still post the original MP4 without cropping or trimming."
   },
   "audience": {
     "whoCanSee": "Who can see this story",

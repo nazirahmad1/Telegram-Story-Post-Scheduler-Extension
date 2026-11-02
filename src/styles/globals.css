@@ -138,6 +138,12 @@ html[lang="ar"] h2,
 html[lang="ar"] h3 {
   font-family: "Noto Sans Arabic", "Vazirmatn", system-ui, sans-serif;
 }
+html[lang="fa"] body,
+html[lang="fa"] h1,
+html[lang="fa"] h2,
+html[lang="fa"] h3 {
+  font-family: "Vazirmatn", "Noto Sans Arabic", system-ui, sans-serif;
+}
 
 /* Accessible, visible keyboard focus everywhere — never suppressed. */
 :focus-visible {
