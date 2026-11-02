@@ -440,6 +440,7 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
           onChange={(e) => setCaption(e.target.value)}
           aria-invalid={captionTooLong}
           aria-label={t("story.caption")}
+          style={{ unicodeBidi: "plaintext" }}
         />
         {captionTooLong && (
           <span className="error-text">
