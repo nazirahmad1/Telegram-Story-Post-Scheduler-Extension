@@ -18,10 +18,13 @@ import {
   zoomAt,
   type MediaTransform,
 } from "../../utils/media-transform";
+import { VideoCutter } from "./VideoCutter";
 
 export interface MediaEditorHandle {
   /** True when the photo was zoomed/cropped/rotated/adjusted (so the edited version must be uploaded). */
   isChanged: () => boolean;
+  /** True when the user has dragged the video trim handles, so the story knows the segment may differ. */
+  isTrimmed: () => boolean;
   /** The file to upload: the original when untouched and already 9:16, otherwise a 1080x1920 JPEG render. */
   render: () => Promise<File>;
 }
@@ -43,6 +46,10 @@ const SLIDER_STEPS = 1000;
 const zoomToSlider = (z: number) => Math.round((Math.log(z / MIN_ZOOM) / Math.log(MAX_ZOOM / MIN_ZOOM)) * SLIDER_STEPS);
 const sliderToZoom = (s: number) => MIN_ZOOM * Math.pow(MAX_ZOOM / MIN_ZOOM, s / SLIDER_STEPS);
 
+function trimEquals(a: { start: number; end: number }, b: { start: number; end: number }): boolean {
+  return Math.abs(a.start - b.start) < 0.01 && Math.abs(a.end - b.end) < 0.01;
+}
+
 export function MediaEditor({ file, caption, disabled, onStatus, onChange, handleRef }: Props) {
   const { t } = useTranslation();
   const isVideo = file.type.startsWith("video/");
@@ -52,6 +59,8 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
   const [transform, setTransform] = useState<MediaTransform>(DEFAULT_TRANSFORM);
   const [showAdjust, setShowAdjust] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [trim, setTrim] = useState({ start: 0, end: 0 });
+  const [videoDuration, setVideoDuration] = useState(0);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const lastPinch = useRef<{ distance: number } | null>(null);
 
@@ -62,14 +71,34 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
     bitmapRef.current = null;
     setSize(null);
     setTransform(DEFAULT_TRANSFORM);
+    setTrim({ start: 0, end: 0 });
 
     if (isVideo) {
       const url = URL.createObjectURL(file);
       setVideoUrl(url);
+      // Read duration for the trimmer
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.muted = true;
+      video.src = url;
+      video.onloadedmetadata = () => {
+        if (!cancelled) {
+          setVideoDuration(video.duration);
+          setTrim({ start: 0, end: video.duration });
+        }
+      };
+      video.onerror = () => {
+        if (!cancelled) setVideoDuration(0);
+      };
       onStatus?.({ ok: true });
-      return () => URL.revokeObjectURL(url);
+      return () => {
+        URL.revokeObjectURL(url);
+        video.src = "";
+        video.load();
+      };
     }
     setVideoUrl(null);
+    setVideoDuration(0);
     decodeImage(file)
       .then((bitmap) => {
         if (cancelled) return bitmap.close();
@@ -108,14 +137,16 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
   }, [transform, size]);
 
   const changed = !isVideo && !isDefaultTransform(transform);
+  const trimChanged = isVideo && !trimEquals(trim, { start: 0, end: 0 });
   useEffect(() => {
-    onChange?.(changed);
-  }, [changed, onChange]);
+    onChange?.(changed || trimChanged);
+  }, [changed, trimChanged, onChange]);
 
   useImperativeHandle(
     handleRef,
     () => ({
       isChanged: () => changed,
+      isTrimmed: () => trimChanged,
       render: async () => {
         const bitmap = bitmapRef.current;
         if (isVideo || !bitmap || !size) return file;
@@ -132,7 +163,7 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
         return new File([blob], `${base}.jpg`, { type: "image/jpeg" });
       },
     }),
-    [changed, isVideo, size, transform, file],
+    [changed, isVideo, size, transform, file, trim, trimChanged],
   );
 
   // ----- gestures: drag to pan, wheel / pinch to zoom -----
@@ -204,14 +235,13 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
   if (isVideo) {
     return (
       <div className="stack" style={{ gap: "var(--space-2)" }}>
-        <div className="story-preview">
-          {videoUrl && <video src={videoUrl} muted autoPlay loop playsInline style={{ objectFit: "contain" }} />}
-          {caption && (
-            <div className="story-preview-caption">
-              <span>{caption}</span>
-            </div>
-          )}
-        </div>
+        <VideoCutter
+          videoUrl={videoUrl!}
+          duration={videoDuration || 0}
+          value={trim}
+          onChange={setTrim}
+          disabled={disabled}
+        />
         <span className="helper-text" style={{ textAlign: "center" }}>
           {t("mediaEditor.videoNote")}
         </span>
