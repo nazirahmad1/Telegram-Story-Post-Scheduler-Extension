@@ -34,15 +34,33 @@ export default function App() {
       ) : !connected ? (
         <ConnectGate />
       ) : (
-        <>
-          <main className="app-content">
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: 1,
+            width: "100%",
+            padding: "var(--space-4)",
+            minHeight: 0,
+          }}
+        >
+          <main
+            className="app-content"
+            style={{
+              width: "100%",
+              maxWidth: "600px",
+              marginInline: "auto",
+            }}
+          >
             {page === "home" && <HomePage onNavigate={setPage} />}
             {page === "createStory" && <StoryEditor onNavigate={setPage} />}
             {page === "history" && <HistoryPage onNavigate={setPage} />}
             {page === "settings" && <SettingsPage />}
           </main>
           <BottomTabBar page={page} onNavigate={setPage} />
-        </>
+        </div>
       )}
     </div>
   );
