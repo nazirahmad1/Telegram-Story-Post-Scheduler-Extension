@@ -1130,3 +1130,117 @@ select {
 .viewers-panel {
   text-align: start;
 }
+
+/* ---------- Trim filmstrip (Telegram-mobile-style dual-handle range) ---------- */
+
+.trim-track {
+  --trim-track-height: 64px;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: var(--trim-track-height);
+  user-select: none;
+  touch-action: none;
+  cursor: default;
+}
+
+.trim-thumbs {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  gap: 2px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--line);
+}
+
+.trim-thumbs img,
+.trim-thumb-skeleton {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  object-fit: cover;
+}
+
+.trim-thumbs img {
+  display: block;
+  pointer-events: none;
+}
+
+.trim-thumb-skeleton {
+  background: linear-gradient(100deg, var(--line) 0%, var(--canvas) 45%, var(--line) 100%);
+  background-size: 200% 100%;
+  animation: trim-thumb-shimmer 1.4s var(--ease) infinite;
+}
+
+@keyframes trim-thumb-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.trim-selection {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--signal) 18%, transparent);
+  border-block: 2px solid var(--signal);
+  box-shadow: inset 0 0 0 1px var(--signal);
+  pointer-events: none;
+}
+
+.trim-selection-edge {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--signal);
+  pointer-events: none;
+}
+
+.trim-handle {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 26px;
+  margin-inline-start: -13px; /* center on the boundary */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ew-resize;
+  touch-action: none;
+  z-index: 2;
+}
+
+.trim-handle::before {
+  content: "";
+  width: 11px;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--signal);
+  box-shadow: 0 1px 4px rgb(20 23 31 / 0.35), inset 0 0 0 1px rgb(255 255 255 / 0.4);
+}
+
+.trim-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3.5px;
+  height: 36px;
+  transform: translate(-50%, -50%);
+  border-radius: var(--radius-pill);
+  background: rgb(255 255 255 / 0.65);
+}
+
+.trim-handle:focus-visible {
+  outline: none;
+}
+.trim-handle:focus-visible::before {
+  box-shadow: 0 1px 4px rgb(20 23 31 / 0.35), 0 0 0 3px var(--signal-soft);
+}
+
+.trim-track[aria-disabled="true"],
+.trim-track[disabled] {
+  opacity: 0.5;
+  pointer-events: none;
+}

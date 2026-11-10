@@ -7,7 +7,6 @@ import { Raw } from "telegram/events";
 import { getEffectiveApiCredentials } from "./config";
 import { clearPersistedSession, getPersistedSession, persistSession } from "./session-storage";
 import { isMp4Video, mediaKind, mp4FileName } from "../utils/media-file";
-import { MAX_STORY_VIDEO_SECONDS } from "../utils/video-transform";
 import {
   AudienceUnresolvedError,
   buildPrivacyRules,
@@ -539,23 +538,29 @@ export class VideoMetadataError extends Error {
   }
 }
 
-/** Telegram stories are limited to 60 seconds. */
+/** Telegram enforces the story-video length limit server-side. */
 export class VideoTooLongError extends Error {
   duration: number;
-  constructor(duration: number) {
-    super(`Story videos can be at most ${MAX_STORY_VIDEO_SECONDS} seconds (this one is ${Math.ceil(duration)}s).`);
+  maxSeconds: number;
+  constructor(duration: number, maxSeconds: number) {
+    super(`This video is ${Math.ceil(duration)} seconds, longer than the ${maxSeconds}s story limit for this account.`);
     this.name = "VideoTooLongError";
     this.duration = duration;
+    this.maxSeconds = maxSeconds;
   }
 }
 
-/** Validates a video before any bytes are uploaded, so failures are fast and explainable. */
-export function assertStoryVideo(file: File, video?: VideoMeta): asserts video is VideoMeta {
+/**
+ * Validates a video before any bytes are uploaded. Story length is enforced only when a
+ * concrete `maxSeconds` is passed — callers that surface a warning instead of blocking
+ * (the composer) pass nothing/null and let Telegram's server decide.
+ */
+export function assertStoryVideo(file: File, video?: VideoMeta, maxSeconds?: number | null): asserts video is VideoMeta {
   if (!isMp4Video(file)) throw new VideoFormatUnsupportedError();
   if (!video || !Number.isFinite(video.duration) || video.duration <= 0 || video.width <= 0 || video.height <= 0) {
     throw new VideoMetadataError();
   }
-  if (video.duration > MAX_STORY_VIDEO_SECONDS + 0.75) throw new VideoTooLongError(video.duration);
+  if (typeof maxSeconds === "number" && video.duration > maxSeconds + 0.75) throw new VideoTooLongError(video.duration, maxSeconds);
 }
 
 export interface PublishStoryParams {
@@ -1203,6 +1208,14 @@ function readAppConfigInt(config: Api.TypeJSONValue, key: string): number | null
   return null;
 }
 
+function readAppConfigIntAny(config: Api.TypeJSONValue, keys: string[]): number | null {
+  for (const key of keys) {
+    const value = readAppConfigInt(config, key);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
 /**
  * The real caption length limit for THIS account, not a hardcoded guess,
  * plus whether it's Premium (which also gates being able to pick a story
@@ -1214,6 +1227,26 @@ function readAppConfigInt(config: Api.TypeJSONValue, key: string): number | null
 export interface AccountCapabilities {
   isPremium: boolean;
   captionLimit: number;
+  /**
+   * The story-video length limit (seconds) for THIS account, read live from Telegram's
+   * server config (story_video_length_limit_default/_premium, falling back to the shared
+   * story_video_length_limit). null means Telegram reports no client-enforceable cap for
+   * this account (Premium) — i.e. long stories are allowed and nothing is blocked locally.
+   */
+  storyVideoLimit: number | null;
+}
+
+const DEFAULT_STORY_VIDEO_SECONDS = 60;
+
+/** Telegram stories' story-video length is limited per account; premium accounts can post longer ones. Read it live rather than assume. */
+function storyVideoLimitFor(config: Api.TypeJSONValue | null, isPremium: boolean): number | null {
+  const keys = isPremium
+    ? ["story_video_length_limit_premium", "story_video_length_limit", "story_video_length_limit_default"]
+    : ["story_video_length_limit_default", "story_video_length_limit"];
+  const fromConfig = config ? readAppConfigIntAny(config, keys) : null;
+  // Premium accounts fetch long-story permission from Telegram; if the server doesn't
+  // expose a limit, don't block locally — the server is the final arbiter anyway.
+  return fromConfig ?? (isPremium ? null : DEFAULT_STORY_VIDEO_SECONDS);
 }
 
 export async function getAccountCapabilities(): Promise<AccountCapabilities> {
@@ -1225,12 +1258,12 @@ export async function getAccountCapabilities(): Promise<AccountCapabilities> {
 
   const isPremium = !!me.premium;
   if (!(appConfig instanceof Api.help.AppConfig)) {
-    return { isPremium, captionLimit: isPremium ? DEFAULT_PREMIUM_CAPTION_LIMIT : DEFAULT_CAPTION_LIMIT };
+    return { isPremium, captionLimit: isPremium ? DEFAULT_PREMIUM_CAPTION_LIMIT : DEFAULT_CAPTION_LIMIT, storyVideoLimit: isPremium ? null : DEFAULT_STORY_VIDEO_SECONDS };
   }
 
   const key = isPremium ? "story_caption_length_limit_premium" : "story_caption_length_limit_default";
   const fallback = isPremium ? DEFAULT_PREMIUM_CAPTION_LIMIT : DEFAULT_CAPTION_LIMIT;
-  return { isPremium, captionLimit: readAppConfigInt(appConfig.config, key) ?? fallback };
+  return { isPremium, captionLimit: readAppConfigInt(appConfig.config, key) ?? fallback, storyVideoLimit: storyVideoLimitFor(appConfig.config, isPremium) };
 }
 
 /**

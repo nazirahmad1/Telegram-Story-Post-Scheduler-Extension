@@ -71,6 +71,8 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
   const [period, setPeriod] = useState<StoryPeriodSeconds>(DEFAULT_PERIOD);
   const [captionMax, setCaptionMax] = useState(FALLBACK_CAPTION_MAX);
   const [isPremium, setIsPremium] = useState(false);
+  // null = no client-side cap (Premium); falls back to 60s until Telegram reports otherwise.
+  const [storyVideoLimit, setStoryVideoLimit] = useState<number | null>(60);
   const [channelTargets, setChannelTargets] = useState<StoryTargetOption[]>([]);
   const [selectedTargets, setSelectedTargets] = useState<Set<StoryTarget>>(() => new Set(["me"]));
   const [status, setStatus] = useState<"idle" | "loadingMedia" | "publishing">(isEdit ? "loadingMedia" : "idle");
@@ -118,10 +120,11 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
     let cancelled = false;
     setLoadWarning(null);
     getAccountCapabilities()
-      .then(({ isPremium: premium, captionLimit }) => {
+      .then(({ isPremium: premium, captionLimit, storyVideoLimit: videoLimit }) => {
         if (cancelled) return;
         setIsPremium(premium);
         setCaptionMax(captionLimit);
+        setStoryVideoLimit(videoLimit);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -355,6 +358,7 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
             file={file}
             caption={caption}
             disabled={busy}
+            maxVideoSeconds={storyVideoLimit}
             handleRef={mediaRef}
             onStatus={(s) => {
               if (!s.ok) {

@@ -44,11 +44,8 @@ import {
 } from "../../utils/media-transform";
 import {
   MAX_STORY_VIDEO_SECONDS,
-  canUploadVideoOriginal,
   clampTrim,
   defaultTrim,
-  pickMp4RecorderMime,
-  renderVideoStory,
   videoHasChanges,
   type VideoTrim,
 } from "../../utils/video-transform";
@@ -70,6 +67,12 @@ interface Props {
   file: File;
   caption?: string;
   disabled?: boolean;
+  /**
+   * Story-video length limit for this account, read live from Telegram's server config
+   * (already fetched by the composer). null = no client-side cap (Premium accounts Telegram
+   * doesn't restrict). Undefined = fall back to the default 60s.
+   */
+  maxVideoSeconds?: number | null;
   /** Called once the photo/video is decoded, or with an error if the browser can't read it. */
   onStatus?: (status: { ok: true } | { ok: false; error: unknown }) => void;
   onChange?: (changed: boolean) => void;
@@ -89,7 +92,7 @@ const formatTime = (seconds: number) => {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 };
 
-export function MediaEditor({ file, caption, disabled, onStatus, onChange, handleRef }: Props) {
+export function MediaEditor({ file, caption, disabled, maxVideoSeconds, onStatus, onChange, handleRef }: Props) {
   const { t } = useTranslation();
   const kind = mediaKind(file);
   const isVideo = kind === "video";
@@ -107,7 +110,7 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
   const [currentTime, setCurrentTime] = useState(0);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const lastPinch = useRef<{ distance: number } | null>(null);
-  const canExportVideo = useMemo(() => pickMp4RecorderMime() !== null, []);
+
 
   // Decode the photo (or load the video's metadata) whenever the file changes.
   useEffect(() => {
@@ -159,6 +162,65 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file, isVideo]);
 
+  // Generate thumbnail snapshots for the filmstrip (sampling evenly across the clip).
+  useEffect(() => {
+    if (!isVideo || !videoUrl || videoDuration <= 0) return;
+    let cancelled = false;
+    const COUNT = 16;
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 112;
+    const ctx = canvas.getContext("2d");
+    const imgs: string[] = [];
+
+    const v = document.createElement("video");
+    v.src = videoUrl;
+    v.muted = true;
+    v.preload = "auto";
+    v.playsInline = true;
+
+    const waitFor = (event: string) =>
+      new Promise<void>((resolve, reject) => {
+        const onEvent = () => { cleanup(); resolve(); };
+        const onError = () => { cleanup(); reject(new Error("Video load failed")); };
+        const timer = window.setTimeout(() => { cleanup(); reject(new Error("Video load timed out")); }, 15000);
+        const cleanup = () => {
+          v.removeEventListener(event, onEvent);
+          v.removeEventListener("error", onError);
+          v.removeEventListener("loadedmetadata", onEvent);
+          window.clearTimeout(timer);
+        };
+        v.addEventListener(event, onEvent, { once: true });
+        v.addEventListener("error", onError, { once: true });
+      });
+
+    const capture = async () => {
+      if (!ctx || !Number.isFinite(v.duration)) return;
+      for (let i = 0; i < COUNT; i++) {
+        if (cancelled) return;
+        const t = (i / Math.max(1, COUNT - 1)) * Math.max(0, v.duration - 0.05);
+        v.currentTime = t;
+        await waitFor("seeked");
+        try {
+          ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+          imgs.push(canvas.toDataURL("image/jpeg", 0.65));
+        } catch {
+          /* skip frame */
+        }
+      }
+      if (!cancelled) setThumbs(imgs);
+    };
+
+    v.addEventListener("loadedmetadata", () => { void capture(); }, { once: true });
+    return () => {
+      cancelled = true;
+      v.removeEventListener("loadedmetadata", () => {});
+      v.src = "";
+      v.load();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVideo, videoUrl, videoDuration]);
+
   useEffect(() => () => bitmapRef.current?.close(), []);
 
   const update = useCallback(
@@ -209,21 +271,15 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
     handleRef,
     () => ({
       isChanged: () => changed,
-      render: async (options) => {
+      render: async () => {
         if (isVideo) {
           if (!size || !videoDuration) throw new Error("The video hasn't finished loading.");
           // Stop the preview so its audio doesn't overlap the export.
           videoRef.current?.pause();
           setPlaying(false);
-          if (canUploadVideoOriginal(file, transform, trim, videoDuration)) return file;
-          return renderVideoStory(file, size, {
-            transform,
-            trim,
-            width: STORY_WIDTH,
-            height: STORY_HEIGHT,
-            signal: options?.signal,
-            onProgress: options?.onProgress,
-          });
+          // User asked for the original, full-quality file to always be uploaded —
+          // no trimming, no re-encoding. The slider only controls preview playback.
+          return file;
         }
         const bitmap = bitmapRef.current;
         if (!bitmap || !size) return file;
@@ -326,15 +382,45 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
     }
   }
 
-  function updateTrim(next: Partial<VideoTrim>) {
-    const merged = clampTrim({ ...trim, ...next }, videoDuration);
-    setTrim(merged);
+  const trackRef = useRef<HTMLDivElement>(null);
+  // Ref (not state) for the active drag — the window-level listeners below read this,
+  // so they always see the current handle, even mid-gesture.
+  const draggingRef = useRef<"start" | "end" | null>(null);
+  const videoDurationRef = useRef(videoDuration);
+  videoDurationRef.current = videoDuration;
+  const trimRef = useRef(trim);
+  trimRef.current = trim;
+
+  /** Pause the preview at the given boundary and show that frame. */
+  function seekVideoTo(seconds: number) {
     const video = videoRef.current;
-    if (video && (video.currentTime < merged.start || video.currentTime > merged.end)) {
-      video.currentTime = merged.start;
-      setCurrentTime(merged.start);
-    }
+    if (video) video.currentTime = seconds;
+    setCurrentTime(seconds);
   }
+
+  useEffect(() => {
+    const onPointerMove = (e: PointerEvent) => {
+      const which = draggingRef.current;
+      const duration = videoDurationRef.current;
+      if (!which || !trackRef.current || duration <= 0) return;
+      const rect = trackRef.current.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+      const value = ratio * duration;
+      setTrim((prev) => clampTrim({ ...prev, [which]: value }, duration));
+      seekVideoTo(value);
+    };
+    const stopDrag = () => {
+      draggingRef.current = null;
+    };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", stopDrag);
+    window.addEventListener("pointercancel", stopDrag);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", stopDrag);
+      window.removeEventListener("pointercancel", stopDrag);
+    };
+  }, []);
 
   function resetVideo() {
     const full = defaultTrim(videoDuration);
@@ -346,7 +432,12 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
   }
 
   const clipLength = Math.max(0, trim.end - trim.start);
-  const clipTooLong = clipLength > MAX_STORY_VIDEO_SECONDS + 0.5;
+  // Warning (not a blocker): the published file is the original, so warn when the FULL video
+  // length exceeds this account's story-video limit — Telegram may reject or shorten it.
+  const limit = maxVideoSeconds === undefined ? MAX_STORY_VIDEO_SECONDS : maxVideoSeconds;
+  const videoOverLimit = videoDuration > (limit ?? Infinity) + 0.5;
+
+  const [thumbs, setThumbs] = useState<string[]>([]);
 
   return (
     <div className="stack" style={{ gap: "var(--space-2)" }}>
@@ -439,34 +530,81 @@ export function MediaEditor({ file, caption, disabled, onStatus, onChange, handl
             <span className="eyebrow row" style={{ gap: 4 }}>
               <Scissors size={13} aria-hidden="true" /> {t("mediaEditor.trim")}
             </span>
-            <label className="stack" style={{ gap: 2 }}>
-              <span className="helper-text">{t("mediaEditor.trimStart")}</span>
-              <input
-                type="range"
-                min={0}
-                max={Math.max(0, videoDuration - 0.3)}
-                step={0.1}
-                value={trim.start}
-                disabled={disabled || !size}
-                onChange={(e) => updateTrim({ start: Number(e.target.value) })}
+            <div className="trim-track" ref={trackRef} style={{ position: "relative", height: 64, userSelect: "none", touchAction: "none" }}>
+              <div className="trim-thumbs" aria-hidden="true">
+                {thumbs.length > 0 ? (
+                  thumbs.map((src, i) => (
+                    <img key={i} src={src} alt="" draggable={false} />
+                  ))
+                ) : (
+                  Array.from({ length: 16 }, (_, i) => (
+                    <div key={i} className="trim-thumb-skeleton" />
+                  ))
+                )}
+              </div>
+              <div
+                className="trim-selection"
+                style={{ left: `${(trim.start / videoDuration) * 100}%`, width: `${((trim.end - trim.start) / videoDuration) * 100}%` }}
+                aria-hidden="true"
               />
-            </label>
-            <label className="stack" style={{ gap: 2 }}>
-              <span className="helper-text">{t("mediaEditor.trimEnd")}</span>
-              <input
-                type="range"
-                min={Math.min(videoDuration, trim.start + 0.3)}
-                max={videoDuration}
-                step={0.1}
-                value={trim.end}
-                disabled={disabled || !size}
-                onChange={(e) => updateTrim({ end: Number(e.target.value) })}
+              <div
+                className="trim-handle trim-handle-left"
+                style={{ left: `${(trim.start / videoDuration) * 100}%` }}
+                role="slider"
+                aria-label={t("mediaEditor.trimStart")}
+                aria-valuemin={0}
+                aria-valuemax={Math.max(0, videoDuration)}
+                aria-valuenow={Math.round(trim.start)}
+                tabIndex={0}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  draggingRef.current = "start";
+                  seekVideoTo(trimRef.current.start);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                  e.preventDefault();
+                  const step = (e.shiftKey ? 5 : 0.5) * (e.key === "ArrowRight" ? 1 : -1);
+                  const next = clampTrim({ ...trimRef.current, start: trimRef.current.start + step }, videoDuration);
+                  setTrim(next);
+                  seekVideoTo(next.start);
+                }}
               />
-            </label>
-            <span className={`helper-text ${clipTooLong ? "error-text" : ""}`}>
+              <div
+                className="trim-handle trim-handle-right"
+                style={{ left: `${(trim.end / videoDuration) * 100}%` }}
+                role="slider"
+                aria-label={t("mediaEditor.trimEnd")}
+                aria-valuemin={0}
+                aria-valuemax={Math.max(0, videoDuration)}
+                aria-valuenow={Math.round(trim.end)}
+                tabIndex={0}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  draggingRef.current = "end";
+                  seekVideoTo(trimRef.current.end);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                  e.preventDefault();
+                  const step = (e.shiftKey ? 5 : 0.5) * (e.key === "ArrowRight" ? 1 : -1);
+                  const next = clampTrim({ ...trimRef.current, end: trimRef.current.end + step }, videoDuration);
+                  setTrim(next);
+                  seekVideoTo(next.end);
+                }}
+              />
+            </div>
+            <span className="helper-text">
               {t("mediaEditor.clipLength", { seconds: clipLength.toFixed(1) })}
             </span>
-            {!canExportVideo && <span className="error-text">{t("mediaEditor.videoExportUnsupported")}</span>}
+            {videoOverLimit && (
+              <span className="helper-text error-text" role="status">
+                {t("mediaEditor.videoLimitWarning", { seconds: Math.ceil(videoDuration), maxSeconds: limit ?? 0 })}
+              </span>
+            )}
+
           </div>
         </>
       )}

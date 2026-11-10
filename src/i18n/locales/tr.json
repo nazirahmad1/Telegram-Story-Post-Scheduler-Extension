@@ -318,8 +318,8 @@
       },
       "videoTooLong": {
         "title": "Bu video çok uzun",
-        "reason": "Hikâye videoları en fazla 60 saniye olabilir (bu video {{seconds}} saniye).",
-        "fix": "Kırpma araçlarıyla 60 saniye veya daha azını seçip tekrar deneyin."
+        "reason": "Bu video bu hesabın hikâye süresini aşıyor ({{seconds}} saniye).",
+        "fix": "Telegram uygulamasından yayınlayın veya orada kırpın."
       },
       "videoEditUnavailable": {
         "title": "Bu tarayıcı düzenlenmiş video dışa aktaramıyor",
@@ -403,7 +403,7 @@
     "contrast": "Kontrast",
     "saturation": "Doygunluk",
     "hint": "Taşımak için sürükleyin · yakınlaştırmak için kaydırın veya çimdikleyin · yakınlaştırmayı değiştirmek için çift tıklayın",
-    "videoNote": "Taşımak için sürükleyin · yakınlaştırmak için kaydırın veya iki parmak kullanın · kırpma, döndürme ve ayarlar yayınlarken uygulanır.",
+    "videoNote": "Taşımak için sürükleyin · kaydırma veya kıstırma için yakınlaştırın · paylaşım orijinal dosya olduğu gibi gönderilir (kırpmasız, sıkıştırmasız).",
     "play": "Oynat",
     "pause": "Duraklat",
     "mute": "Sessize al",
@@ -411,7 +411,8 @@
     "trim": "Kırp",
     "trimStart": "Başlangıç",
     "trimEnd": "Bitiş",
-    "clipLength": "Seçilen: {{seconds}} sn (en fazla 60 sn)",
+    "clipLength": "Seçilen: {{seconds}} sn",
+    "videoLimitWarning": "Bu hesabın hikâye sınırını ({{maxSeconds}} sn) aşıyor ({{seconds}} sn) — yayınlama başarısız olabilir. Orijinal dosya olduğu gibi gönderilecek.",
     "videoExportUnsupported": "Bu tarayıcı düzenlenmiş video dışa aktaramıyor. Orijinal MP4'ü kırpmadan paylaşabilirsiniz."
   },
   "audience": {

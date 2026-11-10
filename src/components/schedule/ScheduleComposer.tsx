@@ -55,6 +55,8 @@ export function ScheduleComposer({ onScheduled }: { onScheduled: () => void }) {
   const [period, setPeriod] = useState<StoryPeriodSeconds>(DEFAULT_PERIOD);
   const [captionMax, setCaptionMax] = useState(FALLBACK_CAPTION_MAX);
   const [isPremium, setIsPremium] = useState(false);
+  const [storyVideoLimit, setStoryVideoLimit] = useState<number | null>(60);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const [channelTargets, setChannelTargets] = useState<StoryTargetOption[]>([]);
   const [selectedTargets, setSelectedTargets] = useState<Set<StoryTarget>>(() => new Set(["me"]));
   const [publishAt, setPublishAt] = useState(defaultDateTimeLocalValue);
@@ -64,15 +66,35 @@ export function ScheduleComposer({ onScheduled }: { onScheduled: () => void }) {
   const [loadWarning, setLoadWarning] = useState<string | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
 
+  // Watch the selected video so we can warn when it exceeds this account's story-video
+  // length limit (warning only — the server is the final arbiter).
+  useEffect(() => {
+    let cancelled = false;
+    setVideoDuration(null);
+    if (!file || mediaKind(file) !== "video") return;
+    readVideoMeta(file)
+      .then((meta) => {
+        if (!cancelled) setVideoDuration(meta?.duration ?? null);
+      })
+      .catch(() => { /* readVideoMeta already failed validation elsewhere */ });
+    return () => {
+      cancelled = true;
+    };
+  }, [file]);
+
+  const videoTooLong =
+    videoDuration !== null && videoDuration > (storyVideoLimit ?? Infinity) + 0.5;
+
   useEffect(() => {
     if (!connected) return;
     let cancelled = false;
     setLoadWarning(null);
     getAccountCapabilities()
-      .then(({ isPremium: premium, captionLimit }) => {
+      .then(({ isPremium: premium, captionLimit, storyVideoLimit: videoLimit }) => {
         if (cancelled) return;
         setIsPremium(premium);
         setCaptionMax(captionLimit);
+        setStoryVideoLimit(videoLimit);
       })
       .catch(async (err) => {
         if (cancelled) return;
@@ -189,6 +211,11 @@ export function ScheduleComposer({ onScheduled }: { onScheduled: () => void }) {
       <div className="card">
         <span className="eyebrow">{t("story.uploadMedia")}</span>
         {file && <MediaPreview file={file} caption={caption} />}
+        {videoTooLong && videoDuration !== null && (
+          <p className="helper-text error-text" role="status">
+            {t("mediaEditor.videoLimitWarning", { seconds: Math.ceil(videoDuration), maxSeconds: storyVideoLimit ?? 0 })}
+          </p>
+        )}
         <div
           className={`dropzone ${isDragActive ? "is-active" : ""} ${file ? "has-file" : ""}`}
           role="button"

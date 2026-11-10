@@ -319,8 +319,8 @@
       },
       "videoTooLong": {
         "title": "Questo video è troppo lungo",
-        "reason": "I video delle storie possono durare al massimo 60 secondi (questo dura {{seconds}} secondi).",
-        "fix": "Usa i controlli di taglio per selezionare 60 secondi o meno, poi riprova."
+        "reason": "Il video supera il limite delle storie per questo account ({{seconds}} s).",
+        "fix": "Pubblicalo dall'app Telegram, oppure taglialo lì prima."
       },
       "videoEditUnavailable": {
         "title": "Questo browser non può esportare video modificati",
@@ -404,7 +404,7 @@
     "contrast": "Contrasto",
     "saturation": "Saturazione",
     "hint": "Trascina per spostare · scorri o pizzica per fare zoom · doppio clic per alternare lo zoom",
-    "videoNote": "Trascina per spostare · scorri o pizzica per ingrandire · taglio, rotazione e regolazioni vengono applicati alla pubblicazione.",
+    "videoNote": "Trascina per spostare · scorri o pizzica per ingrandire · alla pubblicazione viene inviato il file originale così com'è (senza taglio o ricompressione).",
     "play": "Riproduci",
     "pause": "Pausa",
     "mute": "Disattiva audio",
@@ -412,7 +412,8 @@
     "trim": "Taglia",
     "trimStart": "Inizio",
     "trimEnd": "Fine",
-    "clipLength": "Selezionato: {{seconds}} s (max 60 s)",
+    "clipLength": "Selezionato: {{seconds}} s",
+    "videoLimitWarning": "Supera il limite di {{maxSeconds}} s per questo account ({{seconds}} s) — la pubblicazione può fallire senza Premium. Il file originale verrà inviato così com'è.",
     "videoExportUnsupported": "Questo browser non può esportare video modificati. Puoi comunque pubblicare l'MP4 originale senza tagli."
   },
   "audience": {
