@@ -55,7 +55,7 @@
   "story": {
     "title": "Create Story",
     "uploadMedia": "Upload Media",
-    "uploadPhoto": "Upload your photo",
+    "uploadPhoto": "Upload your photo or video",
     "caption": "Caption",
     "captionPlaceholder": "Write a caption…",
     "dragDropHint": "or drag and drop it here",

@@ -55,7 +55,7 @@
   "story": {
     "title": "Créer une story",
     "uploadMedia": "Importer un fichier",
-    "uploadPhoto": "Importez votre photo",
+    "uploadPhoto": "Importez votre photo ou vidéo",
     "caption": "Légende",
     "captionPlaceholder": "Écrivez une légende…",
     "dragDropHint": "ou glissez-la ici",

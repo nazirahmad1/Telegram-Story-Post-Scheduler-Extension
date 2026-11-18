@@ -55,7 +55,7 @@
   "story": {
     "title": "Создать историю",
     "uploadMedia": "Загрузить файл",
-    "uploadPhoto": "Загрузите фото",
+    "uploadPhoto": "Загрузите фото или видео",
     "caption": "Подпись",
     "captionPlaceholder": "Напишите подпись…",
     "dragDropHint": "или перетащите сюда",

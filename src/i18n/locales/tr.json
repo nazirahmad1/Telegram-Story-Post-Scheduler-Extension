@@ -55,7 +55,7 @@
   "story": {
     "title": "Hikaye Oluştur",
     "uploadMedia": "Medya Yükle",
-    "uploadPhoto": "Fotoğrafınızı yükleyin",
+    "uploadPhoto": "Fotoğraf veya videonuzu yükleyin",
     "caption": "Açıklama",
     "captionPlaceholder": "Bir açıklama yazın…",
     "dragDropHint": "veya buraya sürükleyip bırakın",

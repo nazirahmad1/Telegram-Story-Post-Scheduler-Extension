@@ -55,7 +55,7 @@
   "story": {
     "title": "Crear historia",
     "uploadMedia": "Subir archivo",
-    "uploadPhoto": "Sube tu foto",
+    "uploadPhoto": "Sube tu foto o video",
     "caption": "Descripción",
     "captionPlaceholder": "Escribe una descripción…",
     "dragDropHint": "o arrástrala aquí",
