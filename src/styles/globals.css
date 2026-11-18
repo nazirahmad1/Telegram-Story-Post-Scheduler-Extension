@@ -486,7 +486,11 @@ select {
   overflow-wrap: break-word;
   word-break: break-word;
   white-space: pre-wrap;
+  text-align: start; /* default, respects RTL */
 }
+.story-preview-caption.align-left > span { text-align: start; }
+.story-preview-caption.align-center > span { text-align: center; }
+.story-preview-caption.align-right > span { text-align: end; }
 
 /* ---------- Top bar ---------- */
 

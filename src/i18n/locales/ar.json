@@ -90,7 +90,11 @@
     "keepOnProfileHint": "بعد انتهاء مدتها تبقى القصة ظاهرة في ملفك الشخصي.",
     "protectContent": "حماية المحتوى",
     "protectContentHint": "لا يمكن للمشاهدين التقاط لقطة شاشة أو حفظ القصة أو إعادة توجيهها.",
-    "protectContentLocked": "لا يمكن تغيير هذا بعد النشر."
+    "protectContentLocked": "لا يمكن تغيير هذا بعد النشر.",
+    "captionAlign": "محاذاة التسمية التوضيحية",
+    "alignLeft": "يسار",
+    "alignCenter": "وسط",
+    "alignRight": "يمين"
   },
   "history": {
     "title": "السجل",

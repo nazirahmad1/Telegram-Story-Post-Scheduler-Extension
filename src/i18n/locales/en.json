@@ -90,7 +90,11 @@
     "keepOnProfileHint": "After it expires, the story stays visible on your profile.",
     "protectContent": "Protect content",
     "protectContentHint": "Viewers can't take screenshots, save or forward this story.",
-    "protectContentLocked": "This can't be changed after posting."
+    "protectContentLocked": "This can't be changed after posting.",
+    "captionAlign": "Caption alignment",
+    "alignLeft": "Left",
+    "alignCenter": "Center",
+    "alignRight": "Right"
   },
   "history": {
     "title": "History",

@@ -3,7 +3,7 @@ import { ImagePlus, Film, X, Star, AlertCircle, Radio, Users, Lock, Pin, ShieldO
 import { useTranslation } from "../../i18n";
 import { Toast } from "../Toast";
 import { ErrorPanel } from "../ErrorPanel";
-import { MediaEditor, type MediaEditorHandle } from "./MediaEditor";
+import { MediaEditor, type MediaEditorHandle, type CaptionAlign } from "./MediaEditor";
 import { AudiencePicker } from "./AudiencePicker";
 import {
   publishStory,
@@ -63,6 +63,7 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [mediaReplaced, setMediaReplaced] = useState(false);
   const [caption, setCaption] = useState(editing?.caption ?? "");
+  const [captionAlign, setCaptionAlign] = useState<CaptionAlign>("left");
   const [audience, setAudience] = useState<StoryAudienceConfig>(editing?.audienceConfig ?? DEFAULT_AUDIENCE);
   const [names, setNames] = useState<Record<string, string>>(editing?.userNames ?? {});
   const [audienceTouched, setAudienceTouched] = useState(false);
@@ -360,6 +361,8 @@ export function StoryEditor({ onNavigate, editing, onDone, onCancel }: Props) {
             disabled={busy}
             maxVideoSeconds={storyVideoLimit}
             handleRef={mediaRef}
+            captionAlign={captionAlign}
+            onCaptionAlignChange={setCaptionAlign}
             onStatus={(s) => {
               if (!s.ok) {
                 setError(simpleError("errors.unsupportedFormat", "errors.detail.mediaUnsupported.fix"));

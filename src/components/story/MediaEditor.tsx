@@ -22,6 +22,9 @@ import {
   Scissors,
   Volume2,
   VolumeX,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react";
 import { useTranslation } from "../../i18n";
 import { decodeImage, readVideoMeta } from "../../utils/media-meta";
@@ -50,6 +53,15 @@ import {
   type VideoTrim,
 } from "../../utils/video-transform";
 
+/** Horizontal alignment of the caption overlay in the story preview. */
+export type CaptionAlign = "left" | "center" | "right";
+
+const ALIGN_LABEL: Record<CaptionAlign, "story.alignLeft" | "story.alignCenter" | "story.alignRight"> = {
+  left: "story.alignLeft",
+  center: "story.alignCenter",
+  right: "story.alignRight",
+};
+
 export interface MediaEditorRenderOptions {
   signal?: AbortSignal;
   /** 0..1 while an edited video is being re-encoded. */
@@ -73,6 +85,10 @@ interface Props {
    * doesn't restrict). Undefined = fall back to the default 60s.
    */
   maxVideoSeconds?: number | null;
+  /** Horizontal alignment of the caption overlay. Purely a preview choice — Telegram stories render captions as plain inline text. */
+  captionAlign?: CaptionAlign;
+  /** Called when the person presses one of the caption-alignment chips. */
+  onCaptionAlignChange?: (align: CaptionAlign) => void;
   /** Called once the photo/video is decoded, or with an error if the browser can't read it. */
   onStatus?: (status: { ok: true } | { ok: false; error: unknown }) => void;
   onChange?: (changed: boolean) => void;
@@ -92,7 +108,7 @@ const formatTime = (seconds: number) => {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 };
 
-export function MediaEditor({ file, caption, disabled, maxVideoSeconds, onStatus, onChange, handleRef }: Props) {
+export function MediaEditor({ file, caption, disabled, maxVideoSeconds, captionAlign = "left", onCaptionAlignChange, onStatus, onChange, handleRef }: Props) {
   const { t } = useTranslation();
   const kind = mediaKind(file);
   const isVideo = kind === "video";
@@ -498,7 +514,7 @@ export function MediaEditor({ file, caption, disabled, maxVideoSeconds, onStatus
           }}
         />
         {caption && (
-          <div className="story-preview-caption">
+          <div className={`story-preview-caption align-${captionAlign}`}>
             <span>{caption}</span>
           </div>
         )}
@@ -629,6 +645,29 @@ export function MediaEditor({ file, caption, disabled, maxVideoSeconds, onStatus
         <span className="helper-text" style={{ minWidth: 44, textAlign: "end" }} aria-live="polite">
           {zoomPercent}%
         </span>
+      </div>
+
+      <div className="row" style={{ gap: 6, justifyContent: "center" }}>
+        <span className="helper-text">{t("story.captionAlign")}</span>
+        <div className="chip-group" role="radiogroup" aria-label={t("story.captionAlign")}>
+          {(["left", "center", "right"] as const).map((align) => (
+            <button
+              key={align}
+              type="button"
+              role="radio"
+              aria-checked={captionAlign === align}
+              aria-pressed={captionAlign === align}
+              className="chip"
+              disabled={disabled}
+              onClick={() => onCaptionAlignChange?.(align)}
+            >
+              {align === "left" && <AlignLeft size={12} aria-hidden="true" />}
+              {align === "center" && <AlignCenter size={12} aria-hidden="true" />}
+              {align === "right" && <AlignRight size={12} aria-hidden="true" />}
+              {t(ALIGN_LABEL[align])}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="chip-group" role="toolbar" aria-label={t("mediaEditor.tools")}>

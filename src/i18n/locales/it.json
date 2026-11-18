@@ -90,7 +90,11 @@
     "keepOnProfileHint": "Dopo la scadenza, la storia resta visibile sul tuo profilo.",
     "protectContent": "Proteggi contenuto",
     "protectContentHint": "Gli spettatori non potranno fare screenshot, salvare o inoltrare questa storia.",
-    "protectContentLocked": "Non può essere modificato dopo la pubblicazione."
+    "protectContentLocked": "Non può essere modificato dopo la pubblicazione.",
+    "captionAlign": "Allineamento della descrizione",
+    "alignLeft": "Sinistra",
+    "alignCenter": "Centra",
+    "alignRight": "Destra"
   },
   "history": {
     "title": "Cronologia",

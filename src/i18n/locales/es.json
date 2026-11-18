@@ -90,7 +90,11 @@
     "keepOnProfileHint": "Cuando caduque, la historia seguirá visible en tu perfil.",
     "protectContent": "Proteger contenido",
     "protectContentHint": "Los espectadores no podrán hacer capturas, guardar ni reenviar esta historia.",
-    "protectContentLocked": "No se puede cambiar después de publicar."
+    "protectContentLocked": "No se puede cambiar después de publicar.",
+    "captionAlign": "Alineación de la descripción",
+    "alignLeft": "Izquierda",
+    "alignCenter": "Centrar",
+    "alignRight": "Derecha"
   },
   "history": {
     "title": "Historial",

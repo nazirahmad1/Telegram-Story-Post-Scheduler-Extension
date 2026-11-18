@@ -90,7 +90,11 @@
     "keepOnProfileHint": "Süresi dolduktan sonra hikâye profilinizde görünmeye devam eder.",
     "protectContent": "İçeriği koru",
     "protectContentHint": "İzleyiciler ekran görüntüsü alamaz, kaydedemez veya iletemez.",
-    "protectContentLocked": "Paylaşıldıktan sonra değiştirilemez."
+    "protectContentLocked": "Paylaşıldıktan sonra değiştirilemez.",
+    "captionAlign": "Açıklama hizalaması",
+    "alignLeft": "Sola",
+    "alignCenter": "Ortala",
+    "alignRight": "Sağa"
   },
   "history": {
     "title": "Geçmiş",

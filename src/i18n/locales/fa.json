@@ -90,7 +90,11 @@
     "keepOnProfileHint": "بعد از پایان مدت، استوری در پروفایل شما باقی می‌ماند.",
     "protectContent": "محافظت از محتوا",
     "protectContentHint": "بینندگان نمی‌توانند اسکرین‌شات بگیرند، ذخیره یا فوروارد کنند.",
-    "protectContentLocked": "بعد از انتشار قابل تغییر نیست."
+    "protectContentLocked": "بعد از انتشار قابل تغییر نیست.",
+    "captionAlign": "تراز شرح",
+    "alignLeft": "چپ",
+    "alignCenter": "وسط",
+    "alignRight": "راست"
   },
   "history": {
     "title": "تاریخچه",

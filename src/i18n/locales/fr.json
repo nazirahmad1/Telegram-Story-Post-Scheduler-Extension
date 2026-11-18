@@ -90,7 +90,11 @@
     "keepOnProfileHint": "Après son expiration, la story reste visible sur votre profil.",
     "protectContent": "Protéger le contenu",
     "protectContentHint": "Les spectateurs ne pourront ni capturer, ni enregistrer, ni transférer cette story.",
-    "protectContentLocked": "Impossible à modifier après la publication."
+    "protectContentLocked": "Impossible à modifier après la publication.",
+    "captionAlign": "Alignement de la légende",
+    "alignLeft": "Gauche",
+    "alignCenter": "Centrer",
+    "alignRight": "Droite"
   },
   "history": {
     "title": "Historique",
